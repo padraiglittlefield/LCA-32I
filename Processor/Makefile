@@ -15,6 +15,7 @@ VERILATOR_FLAGS += --top-module tb_$(target)
 # Find all source files
 VERILOG_SOURCES := $(shell find $(SRC_DIR) -name "*.sv")
 INCLUDE_FILES := $(shell find $(INC_DIR) -name "*.sv" -o -name "*.svh")
+INTERFACE_FILES := $(shell find $(SRC_DIR)/Interfaces -name "*.svh")
 
 # GTKWave for viewing waveforms
 GTKWAVE := gtkwave
@@ -45,11 +46,13 @@ endif
 compile:
 	@echo "=== Compiling with Verilator ==="
 	@if [ ! -f "$(SIM_DIR)/tb_$(target).sv" ]; then \
-		echo "Error: Testbench $(SIM_DIR)/tb_$(target).sv not found!"; \
-		exit 1; \
-	fi
+        echo "Error: Testbench $(SIM_DIR)/tb_$(target).sv not found!"; \
+        exit 1; \
+    fi
 	$(VERILATOR) $(VERILATOR_FLAGS) \
-		$(INCLUDE_FILES) \
+		$(INC_DIR)/CORE_PKG.svh \
+		$(INTERFACE_FILES) \
+		$(filter-out $(INC_DIR)/CORE_PKG.svh, $(INCLUDE_FILES)) \
 		$(SIM_DIR)/tb_$(target).sv \
 		$(VERILOG_SOURCES) \
 		-j 0

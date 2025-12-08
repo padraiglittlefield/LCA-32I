@@ -5,9 +5,7 @@ module select #()(
     // from wakeup
     input logic [RS_ENTRIES-1:0] reqs,                       // vector of requests from 
     output logic [$clog2(RS_ENTRIES)-1:0] grant,             // granted request from select
-    output logic grant_valid,                                //
-
-    
+    output logic grant_valid                                //
 );
 
 rotating_priority_arbiter #(

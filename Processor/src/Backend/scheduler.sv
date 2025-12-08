@@ -6,7 +6,6 @@ Functions:
     3. Pass instructions from select to register read
 */
 
-import CORE_PKG::*;
 
 module scheduler (
     input logic clk,
@@ -83,7 +82,7 @@ always_ff @(posedge clk) begin
         end
     end else begin
         if(disp_if.disp_valid) begin
-           payload_ram[rs_entry_idx] <= disp_pkt;
+           payload_ram[rs_entry_idx] <= disp_if.disp_pkt;
         end
     end
 end

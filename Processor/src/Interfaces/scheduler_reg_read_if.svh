@@ -1,10 +1,11 @@
 `ifndef SCHED_REG_READ
 `define SCHED_REG_READ
 
-import CORE_PKG::*;
 
 interface scheduler_reg_read_if;
 
+    import CORE_PKG::*;
+    
     disp_packet_t sched_pkt;
     logic fire_valid;
 

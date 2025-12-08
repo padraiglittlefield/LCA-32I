@@ -1,10 +1,11 @@
 `ifndef DISP_SCHED_IF
 `define DISP_SCHED_IF
 
-import CORE_PKG::*;
 
 interface dispatch_scheduler_if;
-    dispatch_packet_t disp_pkt;
+    import CORE_PKG::*;
+
+    disp_packet_t disp_pkt;
     logic disp_valid;
     logic [$clog2(NUM_FUS)-1:0] rs_entry_idx;
     logic rs_full;
