@@ -37,7 +37,7 @@ wakeup wakeup (
     .reqs(reqs),
     .grant(grant),
     .grant_valid(grant_valid),
-    .ready_mask(all_fu_ready_mask),
+    .ready_mask(global_ready_mask),
     .retire_entry(retire_rs_entry),        
     .retire_valid(retire_rs_valid)        
 );
@@ -60,7 +60,7 @@ end
 /* ===== Select =====*/
 select select (
     .clk(clk),
-    .rst(valid),
+    .rst(rst),
     .reqs(reqs),
     .grant(grant),
     .grant_valid(grant_valid) 

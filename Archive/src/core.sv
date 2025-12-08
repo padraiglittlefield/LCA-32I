@@ -1,4 +1,0 @@
-module core();
-
-
-endmodule
