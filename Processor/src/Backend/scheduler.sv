@@ -18,7 +18,6 @@ module scheduler (
     scheduler_reg_read_if.scheduler reg_read_if
 );
 
-logic [(RS_ENTRIES)-1:0] reqs;
 logic [($clog2(RS_ENTRIES))-1:0] grant;
 logic grant_valid;
 logic [($clog2(RS_ENTRIES))-1:0] retire_rs_entry;
@@ -34,13 +33,19 @@ wakeup wakeup (
     .dependency_mask(disp_if.dependency_mask), 
     .free_entry_out(disp_if.rs_entry_idx),
     .full_out(disp_if.rs_full),
-    .reqs(reqs),
+    .reqs(reqs_out),
     .grant(grant),
     .grant_valid(grant_valid),
     .ready_mask(global_ready_mask),
     .retire_entry(retire_rs_entry),        
     .retire_valid(retire_rs_valid)        
 );
+
+logic [(RS_ENTRIES)-1:0] reqs_out;
+logic [(RS_ENTRIES)-1:0] reqs_in;
+always_ff @(posedge clk) begin
+    reqs_in <= reqs_out;
+end
 
 
 /* 
@@ -61,7 +66,7 @@ end
 select select (
     .clk(clk),
     .rst(rst),
-    .reqs(reqs),
+    .reqs(reqs_in),
     .grant(grant),
     .grant_valid(grant_valid) 
 );

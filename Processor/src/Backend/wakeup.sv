@@ -68,9 +68,11 @@ end
 /*
     Setting Request Lines for Select
 */
+logic granted;
 always_comb begin
     for(int i = 0; i < RS_ENTRIES; i++) begin
-        reqs[i] = (dependency_matrix_row[i] == '0) & entry_valid[i] & ~entry_granted[i]; // only request when an entry is valid, has no dependencies, and hasn't already recieved a grant
+        granted = entry_granted[i] || (grant_valid && grant == i);
+        reqs[i] = (dependency_matrix_row[i] == '0) & entry_valid[i] & ~granted; // only request when an entry is valid, has no dependencies, and hasn't already recieved a grant
     end 
 end
 

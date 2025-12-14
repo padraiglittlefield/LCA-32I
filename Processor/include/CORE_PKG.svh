@@ -8,7 +8,7 @@ package CORE_PKG;
 parameter NUM_PREGS = 64;
 parameter NUM_AREGS = 32;
 
-parameter RS_ENTRIES = 32;
+parameter RS_ENTRIES = 4;
 parameter NUM_FUS = 4;
 
 typedef struct packed {
