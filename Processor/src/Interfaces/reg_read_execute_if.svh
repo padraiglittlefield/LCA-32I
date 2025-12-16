@@ -17,7 +17,7 @@ interface reg_read_execute_if;
     );
 
     modport execute (
-        input fire_valid, ex_pkt;
+        input fire_valid, ex_pkt
     );
 
 endinterface

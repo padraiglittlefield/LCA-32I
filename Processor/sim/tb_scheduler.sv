@@ -286,7 +286,7 @@ module tb_scheduler;
     initial begin
         init_signals();
         
-        $display("=== Example Module Testbench ===");
+        $display("=== Scheduler Testbench ===");
         reset_dut();
         
         // call tests here
