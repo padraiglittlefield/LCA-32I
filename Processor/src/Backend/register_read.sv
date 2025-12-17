@@ -5,7 +5,7 @@ module register_read (
     input clk,
     input rst,
     scheduler_reg_read_if.reg_read sched_if,
-    reg_read_phys_reg_file.reg_read reg_file_if,
+    reg_read_phys_reg_file_if.reg_read reg_file_if,
     fwrd_reg_read_if.reg_read fwrd_if,
     reg_read_execute_if.reg_read exec_if
 );

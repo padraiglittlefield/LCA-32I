@@ -29,7 +29,7 @@ module tb_phys_reg_file;
 
     initial begin
         $dumpfile("tb_phys_reg_file.vcd");
-        $dumpvars(0,tb_phy_reg_file);
+        $dumpvars(0,tb_phys_reg_file);
     end
 
     // For this test, only test with 1 pipe

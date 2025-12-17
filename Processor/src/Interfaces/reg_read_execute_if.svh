@@ -9,15 +9,15 @@ interface reg_read_execute_if;
 
     import CORE_PKG::*;
 
-    exec_packet_t ex_pkt;
+    exec_packet_t exec_pkt;
     logic fire_valid;
 
     modport reg_read (
-        output fire_valid, ex_pkt
+        output fire_valid, exec_pkt
     );
 
     modport execute (
-        input fire_valid, ex_pkt
+        input fire_valid, exec_pkt
     );
 
 endinterface
