@@ -11,6 +11,8 @@ parameter NUM_AREGS = 32;
 parameter RS_ENTRIES = 4;
 parameter NUM_FUS = 4;
 
+paramter ROB_ENTRIES = 16;
+
 typedef enum {
     ADD_I, 
     SUB_I,     
@@ -59,6 +61,7 @@ typedef struct packed {
     logic [31:0] imm_val;
     logic instr_valid;
     logic [31:0] pc;
+    logic br_taken;
 } disp_packet_t;
 
 typedef struct packed {
@@ -72,7 +75,7 @@ typedef struct packed {
     logic [31:0] src1_val;
     logic [31:0] src2_val;
     logic alu_en;
-
+    logic br_taken;
 } exec_packet_t;
 
 typedef enum {

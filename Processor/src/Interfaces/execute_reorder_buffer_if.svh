@@ -4,9 +4,19 @@ interface execute_reorder_buffer_if;
 
 import CORE_PKG::*;
 
-modport execute();
+logic br_mispred;
+logic exception;
+logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx
+logic ex_valid;
+logic ex_val;
 
-modport rob();
+modport execute (
+    output br_mispred, exception, rob_entry_idx, ex_valid, ex_val
+);
+
+modport rob (
+    input br_mispred, exception, rob_entry_idx, ex_valid, ex_val
+);
 
 endinterface
 `endif
