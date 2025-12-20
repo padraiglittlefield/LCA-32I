@@ -13,6 +13,8 @@ parameter NUM_FUS = 4;
 
 parameter ROB_ENTRIES = 16;
 
+parameter RETIRE_WIDTH = 2;
+
 typedef enum {
     ADD, 
     SUB,     
@@ -85,9 +87,6 @@ typedef enum {
     REG_FILE,
     FORWARD
 } fwrd_mux;
-
-
-           
 
 // structs and emnums (need to move to core_pkg)
 typedef struct packed {

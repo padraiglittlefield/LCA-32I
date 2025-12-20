@@ -10,7 +10,7 @@ module reorder_buffer #(
     input logic rst,
     input logic flush_en,
     dispatch_reorder_buffer_if.rob disp_if[FIRE_WIDTH],
-    execute_reorder_buffer_if.rob exec_if[NUM_FUS],
+    execute_reorder_buffer_if.rob exec_if[(NUM_FUS-1)],
     arch_reg_file_reorder_buffer_if.rob arch_reg_file_if[RETIRE_WIDTH],
     reorder_buffer_flush_unit_if.rob flush_if
 );
@@ -58,7 +58,7 @@ logic [IDX_WIDTH-1:0] result_idx [0:RESULT_FINISH_WIDTH-1];
 logic [31:0] result_data [0:RESULT_FINISH_WIDTH-1];
 
 // flush signals
-logic [31:0] retore_pc;
+logic [31:0] restore_pc;
 
 
 // =================================
@@ -221,10 +221,10 @@ end
 always_ff @(posedge clk) begin
     if(rst || flush_en) begin
         flush_if.flush_out <= '0;
-        pc <= '0;
+        flush_if.pc <= '0;
     end else begin
         flush_if.flush_out <= |(retire_enable & retire_flush);
-        pc <= restore_pc;
+        flush_if.pc <= restore_pc;
     end
 end
 
