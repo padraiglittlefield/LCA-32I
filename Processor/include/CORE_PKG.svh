@@ -87,5 +87,22 @@ typedef enum {
 } fwrd_mux;
 
 
+           
+
+// structs and emnums (need to move to core_pkg)
+typedef struct packed {
+    logic [4:0] dest_reg;
+    logic wb_en;
+    logic [31:0] pc;
+    logic mispred;
+    logic exception;
+} rob_entry_t;
+
+typedef struct packed {
+    logic valid;                
+    logic ready;
+    logic [31:0] result;
+} rob_status_t;
+
 endpackage
 `endif
