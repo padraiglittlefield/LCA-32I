@@ -1,7 +1,5 @@
 
 module alu (
-  input logic clk,
-  input logic rst,
   input logic alu_en,
   input instr_opcode opcode,
   input [31:0] val1,
@@ -12,7 +10,7 @@ module alu (
 );
  
   // Compute branch condition based on opcode
-  always @ (*) begin
+  always_comb begin
     case (opcode)
       BEQ_I : br_cond = (val1 == val2);
       BNE_I : br_cond = (val1 != val2);
@@ -25,7 +23,7 @@ module alu (
   end
 
   // Compute ALU operations
-  always @ (*) begin
+  always_comb begin
     if(alu_en) begin
       aluout_valid = 1'b1;
       case (opcode)

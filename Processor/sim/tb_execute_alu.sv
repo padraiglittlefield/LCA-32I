@@ -2,7 +2,7 @@
 
 import CORE_PKG::*;
 
-module tb_phys_reg_file;
+module tb_execute_alu;
     
     // ===== Testbench Setup ===== //
     
@@ -28,19 +28,22 @@ module tb_phys_reg_file;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_phys_reg_file.vcd");
-        $dumpvars(0,tb_phys_reg_file);
+        $dumpfile("tb_execute_alu.vcd");
+        $dumpvars(0,tb_execute_alu);
     end
 
-    // For this test, only test with 1 pipe
-    reg_read_phys_reg_file_if reg_read_if[NUM_FUS]();
-    execute_phys_reg_file_if exec_if[NUM_FUS]();
+    reg_read_execute_if reg_read_if();
+    execute_fwrd_if fwrd_if();
+    execute_phy_reg_file_if reg_file_if();
+    execute_reorder_buffer_if rob_if();
 
-    phys_reg_file dut (
+    execute_alu dut (
         .clk(clk),
         .rst(rst),
         .reg_read_if(reg_read_if),
-        .exec_if(exec_if)
+        .fwrd_if(fwrd_if),
+        .reg_file_if(reg_file_if),
+        .rob_if(rob_if)
     );
 
     // ===== Helper Methods ==== //
@@ -49,8 +52,23 @@ module tb_phys_reg_file;
         begin
             clk = 0; 
             rst = 0;
-            reg_read_if[0].src1_val = '0;
-            reg_read_if[0].src2_val = '0;
+            
+            // register file 
+            reg_file_if.ex_valid = '0;
+            reg_file_if.ex_val = '0;
+            reg_file_if.ex_dst_reg = '0;
+
+            // forward
+            fwrd_if.dst_reg = '0;
+            fwrd_if.ex_val = '0;
+            fwrd_if.ex_valid = '0;
+
+            // rob
+            rob_if.br_mispred = '0;
+            rob_if.exception = '0;
+            rob_if.rob_entry_idx = '0
+            rob_if.ex_valid = '0;
+            rob_if.ex_val = '0;
         end
     endtask
 
@@ -80,20 +98,32 @@ module tb_phys_reg_file;
             $display("[RESET] Reset complete\n");
         end
     endtask
-
-    // Write the value to the dst_reg
-    task write_reg(input [31:0] value, input [$clog2(NUM_PREGS)-1:0] dst_reg);
+    
+    task send_instruction (
+        input logic fire_valid_in,
+        input logic [31:0] pc,
+        input logic [$clog2(NUM_PREGS)-1:0] src1_preg,
+        input logic [$clog2(NUM_PREGS)-1:0] src2_preg,
+        input logic [$clog2(NUM_PREGS)-1:0] dst_preg,
+        input logic [31:0] imm_val,
+        input logic instr_valid
+        );
         begin
-            exec_if[0].ex_valid = 1'b1;
-            exec_if[0].ex_val = value;
-            exec_if[0].ex_dst_reg = dst_reg;
-            @(negedge clk);
-            $display("Wrote %0d to Register %0d at Cycle %0d", value, dst_reg, cycle_count);
-            exec_if[0].ex_valid = 1'b0;
+            exec_if.fire_valid = fire_valid_in;
+            exec_if.exec_pkt.pc = pc;
+            exec_if.exec_pkt.src1_preg = src1_preg;
+            exec_if.exec_pkt.src2_preg = src2_preg;
+            exec_if.exec_pkt.dst_preg = dst_preg;
+            exec_if.exec_pkt.imm_val = imm_val;
+            exec_if.exec_pkt.instr_valid = instr_valid;
+            $display("Sent instruction: PC=0x%h, src1=%0d, src2=%0d, dst=%0d at Cycle %0d", 
+                pc, src1_preg, src2_preg, dst_preg, cycle_count);
         end
     endtask
 
-    // Read from src regs
+    // ==== TESTS ==== //
+    
+    
     task test_reg_write();
         begin
             $display("\n[Test 1] Verify Register Writes");
@@ -107,29 +137,15 @@ module tb_phys_reg_file;
             check_assertion("Value should have been written to register", dut.phys_reg_file[8] == 13);
         end
     endtask
-
-    task test_read_reg();
-        begin
-            $display("\n[Test 2] Verify Register Reads");
-
-            reg_read_if[0].src1_reg = 7;
-            reg_read_if[0].src2_reg = 8;
-            @(negedge clk);
-            check_assertion("Should read src1 from register",reg_read_if[0].src1_val == 12);
-            check_assertion("Should read src2 from register", reg_read_if[0].src2_val == 13);
-        end
-    endtask
-
+    
     // ==== Main Test Sequence ==== //
     initial begin
         init_signals();
-        $display("=== Physical Register File Testbench ===");
+        $display("=== Execute (ALU) Testbench ===");
         reset_dut();
 
         // Tests
-        test_reg_write();
-        test_read_reg();
-
+        
         $display("\n=== Testbench Complete ===");
         $display("Total Tests: %0d", pass_count + fail_count);
         if (fail_count == 0) begin

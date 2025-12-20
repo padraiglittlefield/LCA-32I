@@ -58,7 +58,7 @@ module tb_wakeup;
         $dumpvars(0, tb_wakeup);
     end
     
-    // Task: Initialize signals
+    // Initialize signals
     task init_signals();
         begin
             clk = 0;
@@ -73,7 +73,7 @@ module tb_wakeup;
         end
     endtask
     
-    // Task: Check assertion and update counters
+    // Check assertion and update counters
     task check_assertion(input string test_name, input logic condition);
         begin
             if (condition) begin
@@ -86,7 +86,7 @@ module tb_wakeup;
         end
     endtask
     
-    // Task: Reset sequence
+    // Reset sequence
     task reset_dut();
         begin
             $display("\n[RESET] Resetting DUT");
@@ -100,7 +100,7 @@ module tb_wakeup;
         end
     endtask
     
-    // Task: Dispatch an entry
+    // Dispatch an entry
     task dispatch_entry(input [(RS_ENTRIES * NUM_FUS)-1:0] dep_mask);
         begin
             disp_valid = 1;
@@ -112,7 +112,7 @@ module tb_wakeup;
         end
     endtask
     
-    // Task: Grant a ready entry
+    // Grant a ready entry
     task grant_entry();
         begin
             if (reqs != 0) begin
@@ -135,7 +135,7 @@ module tb_wakeup;
         end
     endtask
     
-    // Task: Retire an entry
+    // Retire an entry
     task retire_entry_task(input [$clog2(RS_ENTRIES)-1:0] entry);
         begin
             retire_valid = 1;
@@ -147,7 +147,7 @@ module tb_wakeup;
         end
     endtask
     
-    // Task: Set ready mask
+    // Set ready mask
     task set_ready(input [(RS_ENTRIES * NUM_FUS)-1:0] mask);
         begin
             ready_mask = mask;
@@ -325,7 +325,6 @@ module tb_wakeup;
         test_grant_retire_multiple();
         test_dispatch_after_free();
         
-        // Wait a few more cycles
         repeat(5) @(negedge clk);
         
         $display("\n=== Testbench Complete ===");

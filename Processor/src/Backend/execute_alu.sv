@@ -17,8 +17,6 @@ logic br_cond;
 // ==== ALU ==== //
 
 alu alu (
-    .clk(clk),
-    .rst(rst),
     .alu_en(exec_pkt.alu_en),
     .opcode(exec_pkt.opcode),
     .val1(exec_pkt.src1_val),

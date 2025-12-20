@@ -50,7 +50,7 @@ module tb_scheduler;
         $dumpvars(0, tb_scheduler);
     end
     
-    // Task: Initialize signals
+    Initialize signals
     task init_signals();
         begin
             clk = 0;
@@ -60,7 +60,7 @@ module tb_scheduler;
         end
     endtask
     
-    // Task: Check assertion and update counters
+    // Check assertion and update counters
     task check_assertion(input string test_name, input logic condition);
         begin
             if (condition) begin
@@ -73,7 +73,7 @@ module tb_scheduler;
         end
     endtask
     
-    // Task: Reset sequence
+    // Reset sequence
     task reset_dut();
         begin
             $display("\n[RESET] Resetting DUT");
@@ -88,7 +88,7 @@ module tb_scheduler;
     endtask
     
     
-    // Task: Dispatch an entry
+    // Dispatch an entry
     task dispatch_entry(
         input [(RS_ENTRIES * NUM_FUS)-1:0] dep_mask,
         input [$clog2(NUM_PREGS)-1:0] dst_preg,
@@ -116,7 +116,7 @@ module tb_scheduler;
         end
     endtask
 
-    // Task: Set global ready mask to clear dependencies
+    // Set global ready mask to clear dependencies
     task set_global_ready(input [(RS_ENTRIES * NUM_FUS)-1:0] mask);
         begin
             global_ready_mask = mask;

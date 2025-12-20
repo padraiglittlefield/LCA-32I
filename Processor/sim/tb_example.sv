@@ -44,7 +44,7 @@ module tb_example;
         $dumpvars(0, tb_EXAMPLE);
     end
     
-    // Task: Initialize signals
+    Initialize signals
     task init_signals();
         begin
             clk = 0;
@@ -54,7 +54,7 @@ module tb_example;
         end
     endtask
     
-    // Task: Check assertion and update counters
+    Check assertion and update counters
     task check_assertion(input string test_name, input logic condition);
         begin
             if (condition) begin
@@ -67,7 +67,7 @@ module tb_example;
         end
     endtask
     
-    // Task: Reset sequence
+    Reset sequence
     task reset_dut();
         begin
             $display("\n[RESET] Resetting DUT");
@@ -82,7 +82,7 @@ module tb_example;
     endtask
     
     /*
-    // Task: Dispatch an entry
+    Dispatch an entry
     task dispatch_entry(input [(RS_ENTRIES * NUM_FUS)-1:0] dep_mask);
         begin
             disp_valid = 1;
