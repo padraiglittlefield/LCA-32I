@@ -6,9 +6,9 @@ import CORE_PKG::*;
 
 logic br_mispred;
 logic exception;
-logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx
+logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx;
 logic ex_valid;
-logic ex_val;
+logic [31:0] ex_val;
 
 modport execute (
     output br_mispred, exception, rob_entry_idx, ex_valid, ex_val

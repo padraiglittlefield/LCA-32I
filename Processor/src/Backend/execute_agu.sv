@@ -1,7 +1,8 @@
 module execute_agu (
     input logic clk,
     input logic rst,
-    reg_read_execute_if.execute reg_read_if,
+    reg_read_execute_if.execute reg_read_if
+    //TODO: Connect to LSU
 );
 
 exec_packet_t exec_pkt;
@@ -17,7 +18,7 @@ agu agu (
     .val2(exec_pkt.src2_val),
     .addr_out(addr_out),
     .addr_valid(addr_valid)
-);
+    );
 
 // ==== Register Read ==== //
 always_comb begin 

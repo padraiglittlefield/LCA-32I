@@ -19,8 +19,10 @@ logic br_cond;
 alu alu (
     .alu_en(exec_pkt.alu_en),
     .opcode(exec_pkt.opcode),
-    .val1(exec_pkt.src1_val),
-    .val2(exec_pkt.src2_val),
+    .src1_val(exec_pkt.src1_val),
+    .src2_val(exec_pkt.src2_val),
+    .imm_val(exec_pkt.imm_val),
+    .pc(exec_pkt.pc),
     .aluout(aluout),
     .aluout_valid(aluout_valid),
     .br_cond(br_cond)
