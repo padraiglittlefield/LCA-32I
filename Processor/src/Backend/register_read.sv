@@ -60,12 +60,17 @@ end
 // Pass Through Signals
 
 always_comb begin
+    exec_pkt.opcode = sched_pkt.opcode;
+    exec_pkt.dst_areg = sched_pkt.dst_areg;
     exec_pkt.dst_preg = sched_pkt.dst_preg;
     exec_pkt.src1_preg = sched_pkt.src1_preg;
     exec_pkt.src2_preg = sched_pkt.src2_preg;
+    exec_pkt.rob_entry_idx = sched_pkt.rob_entry_idx;
     exec_pkt.imm_val = sched_pkt.imm_val;
     exec_pkt.instr_valid = sched_pkt.instr_valid;
     exec_pkt.pc = sched_pkt.pc;
+    exec_pkt.alu_en = sched_pkt.alu_en;
+    exec_pkt.br_taken = sched_pkt.br_taken;
 end
 
 always@(posedge clk) begin

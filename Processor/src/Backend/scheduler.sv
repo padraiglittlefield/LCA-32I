@@ -10,7 +10,6 @@ Functions:
 module scheduler (
     input logic clk,
     input logic rst,
-
     output logic [RS_ENTRIES-1:0] local_ready_mask,
     input logic [(RS_ENTRIES * NUM_FUS)-1:0] global_ready_mask,
     dispatch_scheduler_if.scheduler disp_if,
@@ -63,6 +62,7 @@ always_comb begin : ClearDepedencies
 end
 
 /* ===== Select =====*/
+
 select select (
     .clk(clk),
     .rst(rst),
@@ -71,10 +71,16 @@ select select (
     .grant_valid(grant_valid) 
 );
 
-/* ===== Payload RAM ===== */
+/* ==================*/
+
+/* ============== Payload RAM ============== */
+/*
+    - Responsible for storing the instruction packet of instructions that are pending to be
+    woken up
+    - Entries are allocated during dispatch
+*/
 disp_packet_t payload_ram [RS_ENTRIES];
 disp_packet_t payload_ram_out; 
-
 
 always_comb begin
     payload_ram_out = payload_ram[grant];
@@ -92,10 +98,20 @@ always_ff @(posedge clk) begin
     end
 end
 
-/* ===== Register Read ===== */
+/* ========================================= */
 
-assign reg_read_if.sched_pkt = payload_ram_out;
-assign reg_read_if.fire_valid = grant_valid; 
+/* ===== Register Read Pipeline Register ===== */
+always_ff @(posedge clk) begin
+    if(rst) begin
+        reg_read_if.sched_pkt <= 'x;
+        reg_read_if.fire_valid <= '0; 
+    end else begin
+        reg_read_if.sched_pkt <= payload_ram_out;
+        reg_read_if.fire_valid <= grant_valid; 
+    end
+end
+
+/* =========================================== */
 
 
 endmodule

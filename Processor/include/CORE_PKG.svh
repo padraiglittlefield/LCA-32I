@@ -14,6 +14,7 @@ parameter NUM_FUS = 4;
 parameter ROB_ENTRIES = 16;
 
 parameter RETIRE_WIDTH = 2;
+parameter FIRE_WIDTH = 2;
 
 typedef enum {
     ADD, 
@@ -61,9 +62,11 @@ typedef struct packed {
     logic [$clog2(NUM_PREGS)-1:0] dst_preg;
     logic [$clog2(NUM_PREGS)-1:0] src1_preg;
     logic [$clog2(NUM_PREGS)-1:0] src2_preg;
+    logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx;
     logic [31:0] imm_val;
     logic instr_valid;
     logic [31:0] pc;
+    logic alu_en;
     logic br_taken;
 } disp_packet_t;
 

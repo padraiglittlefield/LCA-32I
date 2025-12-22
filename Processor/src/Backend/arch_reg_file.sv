@@ -2,7 +2,7 @@
 module arch_reg_file (
     input clk,
     input rst,
-    arch_reg_file_reorder_buffer_if.reg_file rob_if[RETIRE_WIDTH];
+    arch_reg_file_reorder_buffer_if.reg_file rob_if[RETIRE_WIDTH]
 );
 
 
@@ -27,7 +27,7 @@ generate
     for(j = 0; j < RETIRE_WIDTH; j++) begin : gen_reg_write
         always@(posedge clk) begin
             if(!rst && rob_if[j].valid) begin
-                arch_reg_file[rob_if[j].dst_reg] <= rob_if[j].result;
+                arch_reg_file[rob_if[j].dest_reg] <= rob_if[j].result;
             end
         end
     end
