@@ -9,7 +9,7 @@ module core (
 dispatch_scheduler_if           disp_sched_if[NUM_FUS]();
 execute_scheduler_if            exec_sched_if[NUM_FUS]();
 scheduler_reg_read_if           sched_reg_read_if[NUM_FUS]();
-reg_read_phys_reg_file_if       reg_read_reg_file_if[NUM_FUS]();
+reg_read_reg_file_if       reg_read_reg_file_if[NUM_FUS]();
 fwrd_reg_read_if                reg_read_fwrd_if[NUM_FUS]();
 reg_read_execute_if             reg_read_if_exec_if[NUM_FUS]();
 execute_fwrd_if                 exec_fwrd_if[NUM_FUS]();

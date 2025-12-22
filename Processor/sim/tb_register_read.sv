@@ -34,7 +34,7 @@ module tb_register_read;
 
     // instantiate interfaces
     scheduler_reg_read_if sched_if();
-    reg_read_phys_reg_file_if reg_file_if();
+    reg_read_reg_file_if reg_file_if();
     fwrd_reg_read_if fwrd_if();
     reg_read_execute_if exec_if();
 

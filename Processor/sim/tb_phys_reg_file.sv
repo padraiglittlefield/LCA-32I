@@ -33,7 +33,7 @@ module tb_phys_reg_file;
     end
 
     // For this test, only test with 1 pipe
-    reg_read_phys_reg_file_if reg_read_if[NUM_FUS]();
+    reg_read_reg_file_if reg_read_if[NUM_FUS]();
     execute_phys_reg_file_if exec_if[NUM_FUS]();
 
     phys_reg_file dut (
