@@ -13,7 +13,7 @@ module scheduler (
     output logic [RS_ENTRIES-1:0] local_ready_mask,
     input logic [(RS_ENTRIES * NUM_FUS)-1:0] global_ready_mask,
     dispatch_scheduler_if.scheduler disp_if,
-    execute_scheduler_if.scheduler exec_if,
+    execute_scheduler_if.scheduler exec_if, // removed because of the uniformity of functional units
     scheduler_reg_read_if.scheduler reg_read_if
 );
 

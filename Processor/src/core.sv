@@ -13,7 +13,7 @@ reg_read_reg_file_if       reg_read_reg_file_if[NUM_FUS]();
 fwrd_reg_read_if                reg_read_fwrd_if[NUM_FUS]();
 reg_read_execute_if             reg_read_if_exec_if[NUM_FUS]();
 execute_fwrd_if                 exec_fwrd_if[NUM_FUS]();
-execute_phys_reg_file_if        exec_reg_file_if[NUM_FUS]();
+execute_phys_reg_file_if        exec_reg_file_if[NUM_FUS-1]();
 dispatch_reorder_buffer_if      disp_rob_if[FIRE_WIDTH]();
 execute_reorder_buffer_if       exec_rob_if[(NUM_FUS-1)]();
 arch_reg_file_reorder_buffer_if arch_reg_file_rob_if[RETIRE_WIDTH]();
