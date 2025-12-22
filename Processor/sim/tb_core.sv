@@ -102,13 +102,22 @@ module tb_core;
             new_disp_pkt.alu_en = alu_en;
             new_disp_pkt.br_taken = br_taken;
 
+            //sched dispatch
             dut.disp_sched_if[0].disp_pkt = new_disp_pkt;
             dut.disp_sched_if[0].disp_valid = 1;
             dut.disp_sched_if[0].dependency_mask = dep_mask;
+
+            //rob dispatch
+            dut.disp_rob_if[0].dest_reg = dst_areg;
+            dut.disp_rob_if[0].fire_valid = 1;
+            dut.disp_rob_if[0].wb_en = 1;
+
             @(negedge clk);
             $display("Sent instruction: OPCODE= %s, rob_entry= %0d, PC= 0x%h, alu_en= %0d, imm_val= %0d, dst-areg= %0d, dst-preg= %0d, br_taken= %0d at Cycle %0d", 
                 opcode.name(), rob_entry_idx, pc, alu_en, imm_val, dst_areg, dst_preg, br_taken ,cycle_count);
-           dut.disp_sched_if[0].disp_valid = 0;
+            dut.disp_sched_if[0].disp_valid = 0;
+            dut.disp_rob_if[0].fire_valid = 0;
+
             @(negedge clk);
         end
     endtask

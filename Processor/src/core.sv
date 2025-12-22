@@ -92,16 +92,10 @@ reorder_buffer u_reorder_buffer (
     .flush_if(rob_flush_if.rob)
 );
 
-arch_reg_file u_arch_reg_file (
+register_file u_register_file (
     .clk(clk),
     .rst(rst),
-    .rob_if(arch_reg_file_rob_if.reg_file)
-);
-
-
-phys_reg_file u_phys_reg_file (
-    .clk(clk),
-    .rst(rst),
+    .rob_if(arch_reg_file_rob_if.reg_file),
     .reg_read_if(reg_read_reg_file_if.phys_reg_file),
     .exec_if(exec_reg_file_if.phys_reg_file)
 );
