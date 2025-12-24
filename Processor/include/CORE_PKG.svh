@@ -106,5 +106,30 @@ typedef struct packed {
     logic [31:0] result;
 } rob_status_t;
 
+
+// ======== Memory ======== //
+
+localparam LDQ_ENTRIES = 16;
+localparam SDQ_ENTRIES = 16;
+
+typedef struct packed {
+    logic valid;
+    logic addr_valid;
+    logic [31:0] addr;
+    logic [$clog2(SDQ_ENTIRES):0] sdq_marker;
+    logic issued;
+
+} ldq_entry_t;
+
+typedef struct packed {
+    logic valid;
+    logic addr_valid;
+    logic [31:0] addr;
+    logic committed;
+    logic issued;
+
+} sdq_entry_t;
+
+
 endpackage
 `endif
