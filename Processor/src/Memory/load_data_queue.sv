@@ -4,19 +4,19 @@ module load_data_queue (
     
     // alloc entry from disp
     
-    input logic alloc_valid;
-    input logic [$clog2(SDQ_ENTIRES):0] sdq_marker,
-    output logic [$clog2(LDQ_ENTIRES)-1:0] alloc_idx_out,
-    output logic full,
+    input logic                             disp_vld;
+    input logic [$clog2(SDQ_ENTIRES):0]     disp_sdq_marker,
+    output logic [$clog2(LDQ_ENTRIES)-1:0]  disp_ldq_idx,
+    output logic                            disp_full,
 
     // update entry from exec
-    input logic update_valid,
-    input logic [$clog2(LDQ_ENTIRES)-1:0] update_idx,
-    input logic [31:0] addr_in,
+    input logic                             exec_vld,
+    input logic [$clog2(LDQ_ENTRIES)-1:0]   exec_ldq_idx,
+    input logic [31:0]                      exec_addr,
 
     // send entry to rest of lsu
-    input ldq_entry_t entry_out,
-    input logic out_valid
+    input ldq_entry_t                       issue_entry,
+    input logic                             issue_vld
 
 );
 
@@ -31,20 +31,20 @@ always_ff @(posedge clk) begin
             ldq[i] <= '0;
         end
     end else begin
-        if(alloc_valid) begin
-            ldq[alloc_idx] <= alloc_entry;
+        if(disp_vld) begin
+            ldq[ldq_alloc_idx] <= ldq_alloc_entry;
         end
 
-         if(update_valid) begin
-            ldq[update_idx].addr <= addr_in;
-            ldq[update_idx].addr_valid <= 1'b1;
+         if(exec_vld) begin
+            ldq[exec_ldq_idx].addr <= exec_addr;
+            ldq[exec_ldq_idx].addr_valid <= 1'b1;
         end
     end
 end
 
 // Determine if there is a free entry and if so where
 
-logic [$clog2(LDQ_ENTRIES)-1:0] alloc_idx;
+logic [$clog2(LDQ_ENTRIES)-1:0] ldq_alloc_idx;
 logic [LDQ_ENTRIES-1:0] entries_free;
 
 always_comb begin
@@ -55,30 +55,54 @@ always_comb begin
     end 
 
     // check if there is a free entry
-    full = |entries_free;
+    disp_full = ~|entries_free;
 
-    alloc_idx = '0;
+    ldq_alloc_idx = '0;
     for(int i=0; i<LDQ_ENTRIES; i++) begin
         if(entires_free[i]) begin
-            alloc_idx = i;
+            ldq_alloc_idx = i;
         end
     end
 end
 
 // assign new entry
 
-ldq_entry_t alloc_entry;
+ldq_entry_t ldq_alloc_entry;
 always_comb begin
-    alloc_entry.valid = 1'b1;
-    alloc_entry.addr_valid = 1'b0;
-    alloc_entry.addr = '0;
-    alloc_entry.sdq_marker = sdq_marker;
-    alloc_entry.issued = 1'b0;
+    ldq_alloc_entry.valid = 1'b1;
+    ldq_alloc_entry.addr_valid = 1'b0;
+    ldq_alloc_entry.addr = '0;
+    ldq_alloc_entry.sdq_marker = disp_sdq_marker;
+    ldq_alloc_entry.issued = '0; // not sure if this is really needed. Currently we just delete it after firing
 
-    alloc_idx_out = alloc_idx;
+    disp_ldq_idx = ldq_alloc_idx;
 end
 
-// 
+// issue entry
+
+logic [LDQ_ENTRIES-1:0] entries_ready;
+logic [$clog2(LDQ_ENTRIES)-1:0] issue_idx;
 
 
+always_comb begin
+    for(int i=0; i<LDQ_ENTRIES;i++) begin
+        entries_ready[i] = ldq[i].valid & ldq[i].addr_valid;
+    end
+    issue_vld = 1'b0;
+    issue_idx = '0;
+    for(int i=0; i<LDQ_ENTRIES;i++) begin
+        if(entries_ready[i] & ~issue_vld) begin
+            issue_idx = i;
+            issue_vld = 1'b1;
+            issue_entry = ldq[i];
+        end
+    end
+end
+
+//
+always_ff @(posedge clk) begin
+    if (!rst && issue_vld) begin
+        ldq[issue_idx].valid <= 1'b0;
+    end
+end
 endmodule

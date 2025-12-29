@@ -42,7 +42,7 @@ always_comb begin
     curr_req = masked_req == 0 ? req : masked_req;
 
     for(int i = NUM_REQUESTS-1; i >= 0; i--) begin
-        if(curr_req[i] == 1'b1) begin
+        if(curr_req[i] == 1'b1 & flag != 1'b1) begin
             flag = 1'b1;
             gnt = i;
             gnt_valid = 1'b1;
