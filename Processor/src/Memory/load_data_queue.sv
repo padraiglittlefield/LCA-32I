@@ -4,8 +4,8 @@ module load_data_queue (
     
     // alloc entry from disp
     
-    input logic                             disp_vld;
-    input logic [$clog2(SDQ_ENTIRES):0]     disp_sdq_marker,
+    input logic                             disp_vld,
+    input logic [$clog2(SDQ_ENTRIES):0]     disp_sdq_marker,
     output logic [$clog2(LDQ_ENTRIES)-1:0]  disp_ldq_idx,
     output logic                            disp_full,
 
@@ -15,8 +15,8 @@ module load_data_queue (
     input logic [31:0]                      exec_addr,
 
     // send entry to rest of lsu
-    input ldq_entry_t                       issue_entry,
-    input logic                             issue_vld
+    output ldq_entry_t                      issue_entry,
+    output logic                            issue_vld
 
 );
 
@@ -59,7 +59,7 @@ always_comb begin
 
     ldq_alloc_idx = '0;
     for(int i=0; i<LDQ_ENTRIES; i++) begin
-        if(entires_free[i]) begin
+        if(entries_free[i]) begin
             ldq_alloc_idx = i;
         end
     end
@@ -85,11 +85,15 @@ logic [$clog2(LDQ_ENTRIES)-1:0] issue_idx;
 
 
 always_comb begin
+    
+    issue_vld = '0;
+    issue_idx = '0;
+    issue_entry ='0;
+
     for(int i=0; i<LDQ_ENTRIES;i++) begin
         entries_ready[i] = ldq[i].valid & ldq[i].addr_valid;
     end
-    issue_vld = 1'b0;
-    issue_idx = '0;
+    
     for(int i=0; i<LDQ_ENTRIES;i++) begin
         if(entries_ready[i] & ~issue_vld) begin
             issue_idx = i;
@@ -99,7 +103,6 @@ always_comb begin
     end
 end
 
-//
 always_ff @(posedge clk) begin
     if (!rst && issue_vld) begin
         ldq[issue_idx].valid <= 1'b0;

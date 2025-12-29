@@ -116,7 +116,7 @@ typedef struct packed {
     logic valid;
     logic addr_valid;
     logic [31:0] addr;
-    logic [$clog2(SDQ_ENTIRES):0] sdq_marker;
+    logic [$clog2(SDQ_ENTRIES):0] sdq_marker;
     logic issued;
 
 } ldq_entry_t;
