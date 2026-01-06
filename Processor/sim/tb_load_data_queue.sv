@@ -28,8 +28,9 @@ module tb_load_data_queue;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_load_data_queue.vcd");
+        $dumpfile("tb_load_data_queue.fst");
         $dumpvars(0,tb_load_data_queue);
+        // $dumpvars(0, tb_load_data_queue.dut.ldq);  
     end
 
     localparam RETIRE_WIDTH = 2;
@@ -66,7 +67,11 @@ module tb_load_data_queue;
         begin
             clk = 0; 
             rst = 0;
-            
+            disp_vld = 0;
+            disp_sdq_marker = 0;
+            exec_vld = 0;
+            exec_ldq_idx = 0;
+            exec_addr = 0;
         end
     endtask
 
@@ -97,9 +102,52 @@ module tb_load_data_queue;
         end
     endtask
 
-    
+
+    // helper methods
+
+    task dispatch_entry(
+        input logic [$clog2(SDQ_ENTRIES):0] sdq_marker
+    );
+        begin
+            //set all stuff
+            disp_sdq_marker = sdq_marker; 
+            disp_vld = 1;
+            @(negedge clk);
+            disp_vld = 0;
+            @(negedge clk);
+        end
+    endtask
+
+    task update_addr (
+        input logic                             addr_vld,
+        input logic [$clog2(LDQ_ENTRIES)-1:0]   addr_ldq_idx,
+        input logic [31:0]                      addr
+    );
+        begin
+            exec_vld = 1;
+            exec_ldq_idx = addr_ldq_idx;
+            exec_addr = addr;
+            @(negedge clk);
+            exec_vld = 0;
+            @(negedge clk);
+        end
+    endtask
     
 
+    // Tests
+
+    task test_alloc();
+        begin
+            dispatch_entry(5);
+        end
+    endtask
+
+    task test_issue();
+        begin
+            update_addr(0, 15, 5108);
+            update_addr(1, 15, 5108);
+        end
+    endtask
     // ==== Main Test Sequence ==== //
     initial begin
         init_signals();
@@ -107,9 +155,9 @@ module tb_load_data_queue;
         reset_dut();
 
         // Tests
+        test_alloc();
+        test_issue();
         
-
-
         repeat(5) @(posedge clk);
 
         $display("\n=== Testbench Complete ===");
