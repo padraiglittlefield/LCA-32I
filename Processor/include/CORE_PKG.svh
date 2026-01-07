@@ -127,7 +127,6 @@ typedef struct packed {
     logic [31:0] addr;
     logic committed;
     logic issued;
-
 } sdq_entry_t;
 
 
