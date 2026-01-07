@@ -123,6 +123,7 @@ typedef struct packed {
 
 typedef struct packed {
     logic valid;
+    logic [31:0] store_data;
     logic addr_valid;
     logic [31:0] addr;
     logic committed;

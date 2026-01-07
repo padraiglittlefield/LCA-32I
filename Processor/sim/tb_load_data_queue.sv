@@ -132,6 +132,19 @@ module tb_load_data_queue;
             @(negedge clk);
         end
     endtask
+
+    task update_addr_repeat (
+        input logic                             addr_vld,
+        input logic [$clog2(LDQ_ENTRIES)-1:0]   addr_ldq_idx,
+        input logic [31:0]                      addr
+    );
+        begin
+            exec_vld = 1;
+            exec_ldq_idx = addr_ldq_idx;
+            exec_addr = addr;
+            @(negedge clk);
+        end
+    endtask
     
 
     // Tests
@@ -148,6 +161,22 @@ module tb_load_data_queue;
             update_addr(1, 15, 5108);
         end
     endtask
+
+    task test_fill();
+        begin
+            for(int i = 0; i < 17; i++) begin
+                dispatch_entry(5);
+            end
+        end
+    endtask
+
+    task test_empty();
+        begin
+            for(int i = 0; i < 17; i++) begin
+                update_addr_repeat(1, i, i*3);
+            end
+        end
+    endtask
     // ==== Main Test Sequence ==== //
     initial begin
         init_signals();
@@ -157,6 +186,12 @@ module tb_load_data_queue;
         // Tests
         test_alloc();
         test_issue();
+
+        reset_dut();
+
+        test_fill();
+        test_empty();
+        
         
         repeat(5) @(posedge clk);
 

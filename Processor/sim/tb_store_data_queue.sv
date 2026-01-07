@@ -36,27 +36,31 @@ module tb_store_data_queue;
     localparam RETIRE_WIDTH = 2;
     localparam FIRE_WIDTH = 2;
 
-    logic     clk;
-    logic     rst;
-    logic     cmit_vld;       // valid commit from rob
-    logic     cmit_idx;       // index of entry holding committed instruction
-    logic     disp_vld;       // whether the instr is valid
+    logic disp_vld;       // whether the instr is valid
+    logic store_data;
+    logic exec_vld;
+    logic [$clog2(SDQ_ENTRIES)-1:0] exec_sdq_idx;
+    logic [31:0] exec_addr;
+    logic cmit_vld;       // valid commit from rob
+    logic [$clog2(SDQ_ENTRIES)-1:0] cmit_idx;       // index of entry holding committed instruction
     logic [$clog2(SDQ_ENTRIES)-1:0] sdq_alloc_idx;  // index of recently allocated instr (for use as sdq_marker)
-    logic    sdq_full;       // whether the sdq is full
+    logic sdq_full;       // whether the sdq is full
     sdq_entry_t issue_entry; // output entry of issuing instruction
-    logic issue_valid;        // valid issue
+    logic issue_vld;        // valid issue
 
 
-    load_data_queue dut (
+    store_data_queue dut (
         .clk(clk),
         .rst(rst),
         .disp_vld(disp_vld),
-        .disp_sdq_marker(disp_sdq_marker),
-        .disp_ldq_idx(disp_ldq_idx),
-        .disp_full(disp_full),
+        .store_data(store_data),
         .exec_vld(exec_vld),
-        .exec_ldq_idx(exec_ldq_idx),
+        .exec_sdq_idx(exec_sdq_idx),
         .exec_addr(exec_addr),
+        .cmit_vld(cmit_vld),       
+        .cmit_idx(cmit_idx), 
+        .sdq_alloc_idx(sdq_alloc_idx),
+        .sdq_full(sdq_full),
         .issue_entry(issue_entry),
         .issue_vld(issue_vld)
     );
@@ -68,10 +72,12 @@ module tb_store_data_queue;
             clk = 0; 
             rst = 0;
             disp_vld = 0;
-            disp_sdq_marker = 0;
+            store_data = 0;
             exec_vld = 0;
-            exec_ldq_idx = 0;
+            exec_sdq_idx = 0;
             exec_addr = 0;
+            cmit_vld = 0;
+            cmit_idx = 0;
         end
     endtask
 
@@ -102,30 +108,32 @@ module tb_store_data_queue;
         end
     endtask
 
-
-    // helper methods
-
+    // ================================
+    // ======== Helper Methods ========
+    // ================================
+    
     task dispatch_entry(
-        input logic [$clog2(SDQ_ENTRIES):0] sdq_marker
+        input logic [31:0]  data
     );
         begin
             //set all stuff
-            disp_sdq_marker = sdq_marker; 
             disp_vld = 1;
+            store_data = data;
             @(negedge clk);
             disp_vld = 0;
+            store_data = 0;
             @(negedge clk);
         end
     endtask
 
     task update_addr (
         input logic                             addr_vld,
-        input logic [$clog2(LDQ_ENTRIES)-1:0]   addr_ldq_idx,
+        input logic [$clog2(SDQ_ENTRIES)-1:0]   addr_ldq_idx,
         input logic [31:0]                      addr
     );
         begin
             exec_vld = 1;
-            exec_ldq_idx = addr_ldq_idx;
+            exec_sdq_idx = addr_ldq_idx;
             exec_addr = addr;
             @(negedge clk);
             exec_vld = 0;
@@ -134,29 +142,93 @@ module tb_store_data_queue;
     endtask
     
 
-    // Tests
+    task commit_store (
+        input logic [$clog2(SDQ_ENTRIES)-1:0]   sdq_idx
+    );
+        begin
+            cmit_vld = 1;
+            cmit_idx = sdq_idx;
+            @(negedge clk);
+            cmit_vld = 0;
+            @(negedge clk);
+        end
+    endtask
+    
+    // ================================
+    // ====== End Helper Methods ======
+    // ================================
 
+    // ================================
+    // ============= TESTS ============
+    // ================================
+    
     task test_alloc();
         begin
-            dispatch_entry(5);
+            dispatch_entry(21);
+        end
+    endtask
+
+    task test_exec();
+        begin
+            update_addr(1, dut.head_ptr, 5108);
         end
     endtask
 
     task test_issue();
         begin
-            update_addr(0, 15, 5108);
-            update_addr(1, 15, 5108);
+            commit_store(dut.head_ptr);
         end
     endtask
+
+    task test_fill();
+        begin
+            for(int i = 0; i < 17; i++) begin
+                dispatch_entry(i);
+            end
+        end
+    endtask
+
+     task test_empty();
+        begin
+            for(int i = 0; i < 16; i++) begin
+                update_addr(1, i, i*3);
+            end
+            for(int i = 0; i < 16; i++) begin
+                commit_store(i);
+            end
+        end
+    endtask
+
+    // TODO: FINSIHS
+    task test_lookup();
+        begin
+        end
+    endtask
+
+    // ================================
+    // ========== END TESTS ===========
+    // ================================
+
+
     // ==== Main Test Sequence ==== //
     initial begin
         init_signals();
-        $display("=== LDQ Testbench ===");
+        $display("=== SDQ Testbench ===");
         reset_dut();
 
         // Tests
+
+        // basic tests
         test_alloc();
+        test_exec();
         test_issue();
+
+        // test filling and emptying
+        reset_dut();
+        test_fill();
+        test_empty();
+
+        reset_dut();
         
         repeat(5) @(posedge clk);
 
