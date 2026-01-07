@@ -5,8 +5,8 @@ module store_data_queue #(
     input logic     rst,
     input logic     cmit_vld,       // valid commit from rob
     input logic     cmit_idx,       // index of entry holding committed instruction
-    input logic [ALLOC_WIDTH-1:0] disp_vld,       // whether the instr is valid
-    output logic [$clog2(SDQ_ENTRIES);-1:0] sdq_alloc_idx [0:ALLOC_WIDTH-1],  // index of recently allocated instr (for use as sdq_marker)
+    input logic     disp_vld,       // whether the instr is valid
+    output logic [$clog2(SDQ_ENTRIES)-1:0] sdq_alloc_idx,  // index of recently allocated instr (for use as sdq_marker)
     output logic    sdq_full,       // whether the sdq is full
     output sdq_entry_t issue_entry, // output entry of issuing instruction
     output logic issue_valid        // valid issue
@@ -25,31 +25,6 @@ assign sdq_full = |full;
 logic [PTR_WIDTH-1:0] head_ptr;
 logic [PTR_WIDTH-1:0] tail_ptr;
 
-
-logic [$clog2(ALLOC_WIDTH)-1:0] num_allocations;
-logic [IDX_WIDTH-1:0] alloc_idx [0:ALLOC_WIDTH-1];
-logic alloc_en [0:ALLOC_WIDTH-1];
-
-always_comb begin 
-    num_allocations = '0;
-    for(int i = 0; i < ALLOC_WIDTH; i++) begin
-        alloc_ptr[i] = tail_ptr + PTR_WIDTH'(i);
-        alloc_idx[i] = alloc_ptr[i][IDX_WIDTH-1:0];
-
-        if(i==0) begin
-            full[i] = (head_ptr[PTR_WIDTH-1] != alloc_ptr[i][PTR_WIDTH-1]) && (head_ptr[IDX_WIDTH-1:0] == alloc_idx[i]);
-            alloc_en[i] = disp_vld[i] && !full[i]; // 
-        end else begin
-            full[i] = full[i-1] || ((head_ptr[PTR_WIDTH-1] != alloc_ptr[i][PTR_WIDTH-1]) && (head_ptr[IDX_WIDTH-1:0] == alloc_idx[i]));
-            alloc_en[i] = disp_vld[i] && !full[i] && alloc_en[i-1];
-        end
-
-        if (alloc_en[i]) begin
-            num_allocations = num_allocations + $bits(num_allocations)'(1);
-        end
-    end
-end
-
 // TODO: How does flush interact with LDQ and SDQ
 always_ff @(posedge clk) begin
     if(rst) begin
@@ -64,18 +39,20 @@ always_ff @(posedge clk) begin
     end else begin
         
         // allocate new entry upon dispatch
-        for (int i = 0; i < DISP_WIDTH; i++) begin
-            if (alloc_en[i]) begin
-                sdq[alloc_idx[i]].valid <= 1'b1;
-                sdq[alloc_idx[i]].addr_valid <= 1'b0;
-                sdq[alloc_idx[i]].addr <= '0;
-                sdq[alloc_idx[i]].committed <= 1'b0;
-                sdq[alloc_idx[i]].issued <= 1'b0;
-            end
+        if (disp_vld) begin
+            sdq[tail_ptr].valid <= 1'b1;
+            sdq[tail_ptr].addr_valid <= 1'b0;
+            sdq[tail_ptr].addr <= '0;
+            sdq[tail_ptr].committed <= 1'b0;
+            sdq[tail_ptr].issued <= 1'b0;
+            
+            tail_ptr <= tail_ptr + 1; 
+        end else begin
+            tail_ptr <= tail_ptr;
         end
 
-        tail_ptr <= tail_ptr + num_allocations; 
 
+        // check if we can issue a committed store
         if(sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed) begin
             issue_valid <= sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed;
             head_ptr <= head_ptr + 1;
