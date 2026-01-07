@@ -36,15 +36,15 @@ module tb_store_data_queue;
     localparam RETIRE_WIDTH = 2;
     localparam FIRE_WIDTH = 2;
 
-    logic disp_vld;
-    logic [$clog2(SDQ_ENTRIES):0] disp_sdq_marker;
-    logic [$clog2(LDQ_ENTRIES)-1:0] disp_ldq_idx;
-    logic disp_full;
-    logic exec_vld;
-    logic [$clog2(LDQ_ENTRIES)-1:0] exec_ldq_idx;
-    logic [31:0] exec_addr;
-    ldq_entry_t issue_entry;
-    logic issue_vld;
+    logic     clk;
+    logic     rst;
+    logic     cmit_vld;       // valid commit from rob
+    logic     cmit_idx;       // index of entry holding committed instruction
+    logic     disp_vld;       // whether the instr is valid
+    logic [$clog2(SDQ_ENTRIES)-1:0] sdq_alloc_idx;  // index of recently allocated instr (for use as sdq_marker)
+    logic    sdq_full;       // whether the sdq is full
+    sdq_entry_t issue_entry; // output entry of issuing instruction
+    logic issue_valid;        // valid issue
 
 
     load_data_queue dut (
