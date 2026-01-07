@@ -37,7 +37,7 @@ module tb_store_data_queue;
     localparam FIRE_WIDTH = 2;
 
     logic disp_vld;       // whether the instr is valid
-    logic store_data;
+    logic [31:0] store_data;
     logic exec_vld;
     logic [$clog2(SDQ_ENTRIES)-1:0] exec_sdq_idx;
     logic [31:0] exec_addr;
@@ -46,7 +46,12 @@ module tb_store_data_queue;
     logic [$clog2(SDQ_ENTRIES)-1:0] sdq_alloc_idx;  // index of recently allocated instr (for use as sdq_marker)
     logic sdq_full;       // whether the sdq is full
     sdq_entry_t issue_entry; // output entry of issuing instruction
-    logic issue_vld;        // valid issue
+    logic issue_vld;        // valid issueinput logic [31:0] ld_addr,
+    logic ld_vld;
+    logic [31:0] ld_addr;
+    logic [$clog2(SDQ_ENTRIES)-1:0] ld_sdq_marker;
+    logic ld_hit;
+    logic [31:0] ld_data;
 
 
     store_data_queue dut (
@@ -62,7 +67,13 @@ module tb_store_data_queue;
         .sdq_alloc_idx(sdq_alloc_idx),
         .sdq_full(sdq_full),
         .issue_entry(issue_entry),
-        .issue_vld(issue_vld)
+        .issue_vld(issue_vld),
+        .ld_vld(ld_vld),
+        .ld_addr(ld_addr),
+        .ld_sdq_marker(ld_sdq_marker),
+        .ld_hit(ld_hit),
+        .ld_data(ld_data)
+
     );
 
     // ===== Helper Methods ==== //
@@ -78,6 +89,9 @@ module tb_store_data_queue;
             exec_addr = 0;
             cmit_vld = 0;
             cmit_idx = 0;
+            ld_vld = 0;
+            ld_addr = 0;
+            ld_sdq_marker = 0;
         end
     endtask
 
@@ -153,6 +167,20 @@ module tb_store_data_queue;
             @(negedge clk);
         end
     endtask
+
+    task load_lookup (
+        input logic [31:0] addr,
+        input logic [$clog2(SDQ_ENTRIES)-1:0] sdq_marker
+    );
+        begin
+            ld_vld = 1;
+            ld_addr = addr;
+            ld_sdq_marker = sdq_marker;
+            @(negedge clk);
+            ld_vld = 0;
+            @(negedge clk);
+        end
+    endtask
     
     // ================================
     // ====== End Helper Methods ======
@@ -165,18 +193,26 @@ module tb_store_data_queue;
     task test_alloc();
         begin
             dispatch_entry(21);
+            check_assertion("First entry should be valid", dut.sdq[0].valid == 1);
+            check_assertion("First entry should have correct data", dut.sdq[0].store_data == 21);
         end
     endtask
 
     task test_exec();
         begin
             update_addr(1, dut.head_ptr, 5108);
+            check_assertion("First entry should have valid addr", dut.sdq[0].addr_valid == 1);
+            check_assertion("First entry should have correct addr", dut.sdq[0].addr == 5108);
         end
     endtask
 
     task test_issue();
         begin
             commit_store(dut.head_ptr);
+            check_assertion("First entry should be committed", dut.sdq[0].committed == 1);
+            check_assertion("First entry should be issued", dut.issue_vld == 1);
+            check_assertion("Issued entry should have correct data", dut.issue_entry.store_data == 21);
+            check_assertion("Issued entry should have correct addr", dut.issue_entry.addr == 5108);
         end
     endtask
 
@@ -185,6 +221,7 @@ module tb_store_data_queue;
             for(int i = 0; i < 17; i++) begin
                 dispatch_entry(i);
             end
+            check_assertion("SDQ should be full", dut.full == 1);
         end
     endtask
 
@@ -199,9 +236,20 @@ module tb_store_data_queue;
         end
     endtask
 
-    // TODO: FINSIHS
     task test_lookup();
         begin
+            dispatch_entry(510);
+            update_addr(1, dut.head_ptr, 8);
+            load_lookup(8, 0); // should miss
+            check_assertion("Load Miss, correct addr but wrong ordering", dut.ld_hit == 0);
+            load_lookup(8, 1); // should hit
+            check_assertion("Load Hit, correct addr and correct ordering", dut.ld_hit == 1);
+            check_assertion("Hit results in correct data", dut.ld_data == 510);
+            load_lookup(15, 1); // should miss
+            check_assertion("Load Miss, wrong addr and correct ordering", dut.ld_hit == 0);
+            load_lookup(15, 0); // should miss
+            check_assertion("Load Miss, wrong addr and wrong ordering", dut.ld_hit == 0);
+
         end
     endtask
 
@@ -229,6 +277,7 @@ module tb_store_data_queue;
         test_empty();
 
         reset_dut();
+        test_lookup();
         
         repeat(5) @(posedge clk);
 

@@ -14,6 +14,7 @@ module store_data_queue #(
     output sdq_entry_t                      issue_entry, // output entry of issuing instruction
     output logic                            issue_vld,        // valid issue
     //Associative lookup for issuing load
+    input logic ld_vld,
     input logic [31:0] ld_addr,
     input logic [$clog2(SDQ_ENTRIES)-1:0] ld_sdq_marker,
     output logic ld_hit,
@@ -88,9 +89,8 @@ always_comb begin
     ld_hit = 1'b0;
     ld_data = '0;
 
-    // for(int i = SDQ_ENTRIES; i >= 0; i--) begin
     for(int i = 0; i < SDQ_ENTRIES; i++) begin
-        if(i >= ld_sdq_marker) begin
+        if(ld_sdq_marker > i) begin
             if(sdq[i].addr_valid && ld_addr == sdq[i].addr) begin
                 ld_hit = 1'b1;
                 ld_data = sdq[i].store_data; 
