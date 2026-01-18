@@ -31,7 +31,7 @@ always_ff @(posedge clk) begin
             ldq[i] <= '0;
         end
     end else begin
-        if(disp_vld) begin
+        if(disp_vld && !disp_full) begin
             ldq[ldq_alloc_idx] <= ldq_alloc_entry;
         end
 
@@ -46,6 +46,7 @@ end
 
 logic [$clog2(LDQ_ENTRIES)-1:0] ldq_alloc_idx;
 logic [LDQ_ENTRIES-1:0] entries_free;
+logic alloc_idx_found;
 
 always_comb begin
     
@@ -58,9 +59,11 @@ always_comb begin
     disp_full = ~|entries_free;
 
     ldq_alloc_idx = '0;
+    alloc_idx_found = 1'b0;
     for(int i=0; i<LDQ_ENTRIES; i++) begin
-        if(entries_free[i]) begin
+        if(entries_free[i] && !alloc_idx_found) begin
             ldq_alloc_idx = i;
+            alloc_idx_found = 1;
         end
     end
 end
@@ -75,14 +78,13 @@ always_comb begin
     ldq_alloc_entry.sdq_marker = disp_sdq_marker;
     ldq_alloc_entry.issued = '0; // not sure if this is really needed. Currently we just delete it after firing
 
-    disp_ldq_idx = ldq_alloc_idx;
+    disp_ldq_idx = !disp_full ? ldq_alloc_idx : '0;
 end
 
 // issue entry
 
 logic [LDQ_ENTRIES-1:0] entries_ready;
 logic [$clog2(LDQ_ENTRIES)-1:0] issue_idx;
-
 
 always_comb begin
     
@@ -93,9 +95,9 @@ always_comb begin
     for(int i=0; i<LDQ_ENTRIES;i++) begin
         entries_ready[i] = ldq[i].valid & ldq[i].addr_valid;
     end
-    
+
     for(int i=0; i<LDQ_ENTRIES;i++) begin
-        if(entries_ready[i] & ~issue_vld) begin
+        if(entries_ready[i] && !issue_vld) begin
             issue_idx = i;
             issue_vld = 1'b1;
             issue_entry = ldq[i];
