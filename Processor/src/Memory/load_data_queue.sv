@@ -15,6 +15,7 @@ module load_data_queue (
     input logic [31:0]                      exec_addr,
 
     // send entry to rest of lsu
+    input logic                             issue_en,   // can we issue a load
     output ldq_entry_t                      issue_entry,
     output logic                            issue_vld
 
@@ -43,7 +44,6 @@ always_ff @(posedge clk) begin
 end
 
 // Determine if there is a free entry and if so where
-
 logic [$clog2(LDQ_ENTRIES)-1:0] ldq_alloc_idx;
 logic [LDQ_ENTRIES-1:0] entries_free;
 logic alloc_idx_found;
@@ -91,22 +91,23 @@ always_comb begin
     issue_vld = '0;
     issue_idx = '0;
     issue_entry ='0;
+    if(issue_en) begin
+        for(int i=0; i<LDQ_ENTRIES;i++) begin
+            entries_ready[i] = ldq[i].valid & ldq[i].addr_valid;
+        end
 
-    for(int i=0; i<LDQ_ENTRIES;i++) begin
-        entries_ready[i] = ldq[i].valid & ldq[i].addr_valid;
-    end
-
-    for(int i=0; i<LDQ_ENTRIES;i++) begin
-        if(entries_ready[i] && !issue_vld) begin
-            issue_idx = i;
-            issue_vld = 1'b1;
-            issue_entry = ldq[i];
+        for(int i=0; i<LDQ_ENTRIES;i++) begin
+            if(entries_ready[i] && !issue_vld) begin
+                issue_idx = i;
+                issue_vld = 1'b1;
+                issue_entry = ldq[i];
+            end
         end
     end
 end
 
 always_ff @(posedge clk) begin
-    if (!rst && issue_vld) begin
+    if (!rst && issue_vld && issue_en) begin
         ldq[issue_idx].valid <= 1'b0;
     end
 end

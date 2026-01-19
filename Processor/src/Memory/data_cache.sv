@@ -1,5 +1,5 @@
 module data_cache #(
-    parameter NUM_ENTRIES = 64,
+    parameter NUM_ENTS = 64,
     parameter BLOCK_SIZE = 128 
 )(
     input logic clk,
@@ -19,7 +19,7 @@ module data_cache #(
 
 // |      Tag     | Index | Block Offset | Byte Offset |
 // |      22      |   6   |     2        |      2      |
-localparam NUM_IDX_BITS = $clog2(NUM_ENTRIES);
+localparam NUM_IDX_BITS = $clog2(NUM_ENTS);
 localparam BLOCK_OFFSET_BITS = $clog2((BLOCK_SIZE)/32);
 localparam NUM_TAG_BITS = 32 - NUM_IDX_BITS - BLOCK_OFFSET_BITS - 2;
 
@@ -29,7 +29,7 @@ typedef struct packed {
     logic valid;
 } cache_block;
 
-cache_block cache_memory [NUM_ENTRIES]; //declare array of size NUM_ENTRIES
+cache_block cache_memory [NUM_ENTS]; //declare array of size NUM_ENTS
 
 logic write_hit;
 logic [NUM_TAG_BITS-1:0] write_tag;
@@ -37,6 +37,7 @@ logic [NUM_IDX_BITS-1:0] write_idx;
 logic [BLOCK_OFFSET_BITS-1:0] write_block_offset;
 cache_block write_block;
 logic [BLOCK_SIZE-1:0] write_data;
+
 assign write_tag = w_addr_i[31-:NUM_TAG_BITS];
 assign write_idx = w_addr_i[(31-NUM_TAG_BITS) -: NUM_IDX_BITS];
 assign write_block_offset = w_addr_i[BLOCK_OFFSET_BITS+1:2]; 
@@ -47,6 +48,7 @@ logic [NUM_IDX_BITS-1:0] read_idx;
 logic [BLOCK_OFFSET_BITS-1:0] read_block_offset;
 logic [31:0] read_data;
 cache_block read_block;
+
 assign read_tag = r_addr_i[31-:NUM_TAG_BITS];
 assign read_idx = r_addr_i[(31-NUM_TAG_BITS) -: NUM_IDX_BITS];
 assign read_block_offset = r_addr_i[BLOCK_OFFSET_BITS+1:2]; 
@@ -83,7 +85,7 @@ assign w_hit_o = write_hit;
 
 always_ff @(posedge clk) begin
     if(rst) begin
-        for(int i = 0; i < NUM_ENTRIES; i++) begin
+        for(int i = 0; i < NUM_ENTS; i++) begin
             cache_memory[i] <= '0;
         end
     end else begin
