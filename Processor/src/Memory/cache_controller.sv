@@ -24,5 +24,8 @@ module cache_controller (
     );
 
 
-    
+    miss_status_history_register mshr (
+
+    );
+
 endmodule

@@ -118,6 +118,7 @@ typedef struct packed {
     logic [31:0] addr;
     logic [$clog2(SDQ_ENTRIES):0] sdq_marker;
     logic issued;
+    logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx;
 
 } ldq_entry_t;
 
@@ -128,6 +129,7 @@ typedef struct packed {
     logic [31:0] addr;
     logic committed;
     logic issued;
+    logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx;
 } sdq_entry_t;
 
 
