@@ -82,7 +82,7 @@ always_comb begin
         write_data[write_block_offset*32 +: 32] = wr_data_i;
     end else begin
         write_block = '0;
-        write_hit = 1'b0;a
+        write_hit = 1'b0;
     end
 end
 
@@ -92,7 +92,7 @@ assign wr_hit_o = write_hit;
 // check if the block being evicted by a repair is dirty and needs to be written back
 always_comb begin
     //set defaults (avoid latch)
-    wb_evicted_en = 1'b0;0
+    wb_evicted_en = 1'b0;
     wb_evicted_block = '0;
     // on a write repair, check for dirty and valid 
     if(wr_en && is_repair_i) begin

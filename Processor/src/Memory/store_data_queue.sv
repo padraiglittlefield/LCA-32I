@@ -1,24 +1,23 @@
 module store_data_queue #(
 )(
-    input logic                             clk,
-    input logic                             rst,
-    input logic                             disp_vld,
-    input logic [31:0]                      store_data,       // whether the instr is valid
-    input logic                             cmit_vld,       // valid commit from rob
-    input logic [$clog2(SDQ_ENTRIES)-1:0]   cmit_idx,       // index of entry holding committed instruction
-    input logic                             exec_vld,
-    input logic [$clog2(SDQ_ENTRIES)-1:0]   exec_sdq_idx,
-    input logic [31:0]                      exec_addr,
-    output logic [$clog2(SDQ_ENTRIES)-1:0]  sdq_alloc_idx,  // index of recently allocated instr (for use as sdq_marker)
-    output logic                            sdq_full,       // whether the sdq is full
-    output sdq_entry_t                      issue_entry, // output entry of issuing instruction
-    output logic                            issue_vld,        // valid issue
-    //Associative lookup for issuing load
-    input logic ld_vld,
-    input logic [31:0] ld_addr,
-    input logic [$clog2(SDQ_ENTRIES)-1:0] ld_sdq_marker,
-    output logic ld_hit,
-    output logic [31:0] ld_data
+    input   logic                               clk_i,
+    input   logic                               rst_i,
+    input   logic                               disp_vld_i,
+    input   logic   [31:0]                      store_data,       // whether the instr is valid
+    input   logic                               cmit_vld,       // valid commit from rob
+    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   cmit_idx,       // index of entry holding committed instruction
+    input   logic                               exec_vld,
+    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   exec_sdq_idx,
+    input   logic   [31:0]                      exec_addr,
+    output  logic   [$clog2(SDQ_ENTRIES)-1:0]   sdq_alloc_idx,  // index of recently allocated instr (for use as sdq_marker)
+    output  logic                               sdq_full,       // whether the sdq is full
+    output  sdq_entry_t                         issue_entry, // output entry of issuing instruction
+    output  logic                               issue_vld,        // valid issue
+    input   logic                               ld_vld,
+    input   logic   [31:0]                      ld_addr,
+    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   ld_sdq_marker,
+    output  logic                               ld_hit,
+    output  logic   [31:0]                      ld_data
 
 );
 
@@ -32,8 +31,8 @@ logic [PTR_WIDTH-1:0] head_ptr;
 logic [PTR_WIDTH-1:0] tail_ptr;
 
 // TODO: How does flush interact with Memory System
-always_ff @(posedge clk) begin
-    if(rst) begin
+always_ff @(posedge clk_i) begin
+    if(rst_i) begin
 
         head_ptr <= '0;
         tail_ptr <= '0;
@@ -45,7 +44,7 @@ always_ff @(posedge clk) begin
     end else begin
         
         // allocate new entry upon dispatch
-        if (disp_vld & ~full) begin
+        if (disp_vld_i & ~full) begin
             sdq[tail_ptr].valid <= 1'b1;
             sdq[tail_ptr].store_data <= store_data;
             sdq[tail_ptr].addr_valid <= 1'b0;

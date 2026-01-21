@@ -35,30 +35,32 @@ module tb_load_data_queue;
 
     localparam RETIRE_WIDTH = 2;
     localparam FIRE_WIDTH = 2;
-
-    logic disp_vld;
-    logic [$clog2(SDQ_ENTRIES):0] disp_sdq_marker;
-    logic [$clog2(LDQ_ENTRIES)-1:0] disp_ldq_idx;
-    logic disp_full;
-    logic exec_vld;
-    logic [$clog2(LDQ_ENTRIES)-1:0] exec_ldq_idx;
-    logic [31:0] exec_addr;
-    ldq_entry_t issue_entry;
-    logic issue_vld;
+    
+    logic disp_vld_i;
+    logic [$clog2(SDQ_ENTRIES):0] disp_sdq_marker_i;
+    logic [$clog2(LDQ_ENTRIES)-1:0] ldq_disp_idx_o;
+    logic ldq_full_o;
+    logic exec_vld_i;
+    logic [$clog2(LDQ_ENTRIES)-1:0] exec_ldq_idx_i;
+    logic [31:0] exec_addr_i;
+    logic issue_en_i;
+    ldq_entry_t issue_entry_o;
+    logic issue_vld_o;
 
 
     load_data_queue dut (
-        .clk(clk),
-        .rst(rst),
-        .disp_vld(disp_vld),
-        .disp_sdq_marker(disp_sdq_marker),
-        .disp_ldq_idx(disp_ldq_idx),
-        .disp_full(disp_full),
-        .exec_vld(exec_vld),
-        .exec_ldq_idx(exec_ldq_idx),
-        .exec_addr(exec_addr),
-        .issue_entry(issue_entry),
-        .issue_vld(issue_vld)
+        .clk_i(clk),
+        .rst_i(rst),
+        .disp_vld_i(disp_vld_i),
+        .disp_sdq_marker_i(disp_sdq_marker_i),
+        .ldq_disp_idx_o(ldq_disp_idx_o),
+        .ldq_full_o(ldq_full_o),
+        .exec_vld_i(exec_vld_i),
+        .exec_ldq_idx_i(exec_ldq_idx_i),
+        .exec_addr_i(exec_addr_i),
+        .issue_en_i(issue_en_i),   // can we issue a load
+        .issue_entry_o(issue_entry_o),
+        .issue_vld_o(issue_vld_o)
     );
 
     // ===== Helper Methods ==== //
@@ -67,11 +69,11 @@ module tb_load_data_queue;
         begin
             clk = 0; 
             rst = 0;
-            disp_vld = 0;
-            disp_sdq_marker = 0;
-            exec_vld = 0;
-            exec_ldq_idx = 0;
-            exec_addr = 0;
+            disp_vld_i = 0;
+            disp_sdq_marker_i = 0;
+            exec_vld_i = 0;
+            exec_ldq_idx_i = 0;
+            exec_addr_i = 0;
         end
     endtask
 
@@ -110,10 +112,10 @@ module tb_load_data_queue;
     );
         begin
             //set all stuff
-            disp_sdq_marker = sdq_marker; 
-            disp_vld = 1;
+            disp_sdq_marker_i = sdq_marker; 
+            disp_vld_i = 1;
             @(negedge clk);
-            disp_vld = 0;
+            disp_vld_i = 0;
             @(negedge clk);
         end
     endtask
@@ -124,11 +126,11 @@ module tb_load_data_queue;
         input logic [31:0]                      addr
     );
         begin
-            exec_vld = 1;
-            exec_ldq_idx = addr_ldq_idx;
-            exec_addr = addr;
+            exec_vld_i = 1;
+            exec_ldq_idx_i = addr_ldq_idx;
+            exec_addr_i = addr;
             @(negedge clk);
-            exec_vld = 0;
+            exec_vld_i = 0;
             @(negedge clk);
         end
     endtask
@@ -139,9 +141,9 @@ module tb_load_data_queue;
         input logic [31:0]                      addr
     );
         begin
-            exec_vld = 1;
-            exec_ldq_idx = addr_ldq_idx;
-            exec_addr = addr;
+            exec_vld_i = 1;
+            exec_ldq_idx_i = addr_ldq_idx;
+            exec_addr_i = addr;
             @(negedge clk);
         end
     endtask
