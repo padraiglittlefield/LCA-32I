@@ -8,24 +8,24 @@ import CORE_PKG::*;
 module miss_status_history_register #(
     parameter NUM_ENTS = 16
 )(
-    input logic clk,
-    input logic rst,
-    input logic repair_complete,
-    input logic repair_ack,
-    input logic ld_alloc_en, // on a load miss
-    input logic [31:0] ld_alloc_addr,
-    input logic [$clog2(ROB_ENTRIES)-1:0] ld_alloc_rob_idx,
-    input logic st_alloc_en, // on a store miss
-    input logic [31:0] st_alloc_addr,
-    input logic [31:0] st_alloc_data,
-    input logic [$clog2(ROB_ENTRIES)-1:0] st_alloc_rob_idx,
-    output logic ld_full,
-    output logic st_full,
-    output logic repair_req,
-    output logic [31:0] repair_req_addr,
-    output logic [31:0] repair_req_data,
-    output logic [$clog2(ROB_ENTRIES)-1:0] repair_req_rob_idx,
-    output logic repair_is_store
+    input   logic                               clk_i,
+    input   logic                               rst_i,
+    input   logic                               repair_complete_i,    
+    input   logic                               repair_ack_i,
+    input   logic                               ld_alloc_en_i, // on a load miss
+    input   logic   [31:0]                      ld_alloc_addr_i,
+    input   logic   [$clog2(ROB_ENTRIES)-1:0]   ld_alloc_rob_idx_i,
+    input   logic                               st_alloc_en_i, // on a store miss
+    input   logic   [31:0]                      st_alloc_addr_i,
+    input   logic   [31:0]                      st_alloc_data_i,
+    input   logic   [$clog2(ROB_ENTRIES)-1:0]   st_alloc_rob_idx_i,
+    output  logic                               ld_full_o,
+    output  logic                               st_full_o,
+    output  logic                               repair_req_o,
+    output  logic   [31:0]                      repair_req_addr_o,
+    output  logic   [31:0]                      repair_req_data_o,
+    output  logic   [$clog2(ROB_ENTRIES)-1:0]   repair_req_rob_idx_o,
+    output  logic                               repair_is_store_o
 );
 
 typedef struct packed {
@@ -55,7 +55,7 @@ always_comb begin
         mshr_ld_free[i] = ~mshr_ld[i].valid_bit;
     end
 
-    ld_full = ~|mshr_ld_free;
+    ld_full_o = ~|mshr_ld_free;
 
     for(int i = 0; i < NUM_ENTS/2; i++) begin
         if (mshr_ld_free[i] && !ld_alloc_idx_found) begin
@@ -79,7 +79,7 @@ always_comb begin
         mshr_st_free[i] = ~mshr_st[i].valid_bit;
     end
 
-    st_full = ~|mshr_st_free;
+    st_full_o = ~|mshr_st_free;
 
     for(int i = 0; i < NUM_ENTS/2; i++) begin
         if (mshr_st_free[i] && !st_alloc_idx_found) begin
@@ -89,28 +89,28 @@ always_comb begin
     end
 end
 
-always_ff @(posedge clk) begin
-    if(rst) begin
+always_ff @(posedge clk_i) begin
+    if(rst_i) begin
         for(int i=0; i <NUM_ENTS/2; i++) begin
             mshr_ld[i] <= '0;
             mshr_st[i] <= '0;
         end
     end else begin
-        if(ld_alloc_en && !ld_full) begin 
+        if(ld_alloc_en_i && !ld_full_o) begin 
             mshr_ld[ld_alloc_idx].valid_bit <= 1'b1;
-            mshr_ld[ld_alloc_idx].addr <= ld_alloc_addr;
+            mshr_ld[ld_alloc_idx].addr <= ld_alloc_addr_i;
             mshr_ld[ld_alloc_idx].data <= '0;
-            mshr_ld[ld_alloc_idx].rob_idx <= ld_alloc_rob_idx;
+            mshr_ld[ld_alloc_idx].rob_idx <= ld_alloc_rob_idx_i;
         end 
 
-        if(st_alloc_en && !st_full) begin 
+        if(st_alloc_en_i && !st_full_o) begin 
             mshr_st[st_alloc_idx].valid_bit <= 1'b1;
-            mshr_st[st_alloc_idx].addr <= st_alloc_addr;
-            mshr_st[st_alloc_idx].data <= st_alloc_data;
-            mshr_st[st_alloc_idx].rob_idx <= st_alloc_rob_idx;
+            mshr_st[st_alloc_idx].addr <= st_alloc_addr_i;
+            mshr_st[st_alloc_idx].data <= st_alloc_data_i;
+            mshr_st[st_alloc_idx].rob_idx <= st_alloc_rob_idx_i;
         end 
 
-        if(repair_complete) begin   // mark repaired entries as unvalid so they can be overwritten 
+        if(repair_complete_i) begin   // mark repaired entries as unvalid so they can be overwritten 
             if (repairing_ld) begin
                 mshr_ld[repair_ptr_reg].valid_bit <= 1'b0;
             end 
@@ -183,19 +183,19 @@ always_comb begin
 end
 
 
-always_ff @(posedge clk) begin
-    if(rst) begin
+always_ff @(posedge clk_i) begin
+    if(rst_i) begin
         repairing_ld <= 1'b0;
         repairing_st <= 1'b0;
         repair_ptr_reg <= '0;
     end else begin
-        if (start_repair_ld && repair_ack) begin
+        if (start_repair_ld && repair_ack_i) begin
             repairing_ld <= 1'b1;
             repair_ptr_reg <= repair_ptr;
-        end else if (start_repair_st && repair_ack) begin 
+        end else if (start_repair_st && repair_ack_i) begin 
             repairing_st <= 1'b1;
             repair_ptr_reg <= repair_ptr;
-        end else if (repair_complete) begin // upon the completion of a repair, 
+        end else if (repair_complete_i) begin // upon the completion of a repair, 
             repairing_ld <= 1'b0;
             repairing_st <= 1'b0;
             repair_ptr_reg <= '0;
@@ -205,10 +205,10 @@ end
 
 // assign information about the repair request (data, memory operation, )
 always_comb begin
-    repair_req = start_repair_ld || start_repair_st;
-    repair_is_store = start_repair_st;
-    repair_req_addr = start_repair_ld ? mshr_ld[repair_ptr].addr : (start_repair_st ? mshr_st[repair_ptr].addr : 'x);
-    repair_req_data = start_repair_st ? mshr_st[repair_ptr].data : 'x;
-    repair_req_rob_idx = start_repair_ld ? mshr_ld[repair_ptr].rob_idx : (start_repair_st ? mshr_st[repair_ptr].rob_idx : 'x);
+    repair_req_o = start_repair_ld || start_repair_st;
+    repair_is_store_o = start_repair_st;
+    repair_req_addr_o = start_repair_ld ? mshr_ld[repair_ptr].addr : (start_repair_st ? mshr_st[repair_ptr].addr : 'x);
+    repair_req_data_o = start_repair_st ? mshr_st[repair_ptr].data : 'x;
+    repair_req_rob_idx_o = start_repair_ld ? mshr_ld[repair_ptr].rob_idx : (start_repair_st ? mshr_st[repair_ptr].rob_idx : 'x);
 end
 endmodule
