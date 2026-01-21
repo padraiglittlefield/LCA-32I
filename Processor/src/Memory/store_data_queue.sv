@@ -2,6 +2,7 @@ module store_data_queue #(
 )(
     input   logic                               clk_i,
     input   logic                               rst_i,
+    input   logic                               flush_i,
     input   logic                               disp_vld_i,
     input   logic   [31:0]                      store_data_i,       // whether the instr is valid
     input   logic                               cmit_vld_i,       // valid commit from rob
@@ -31,6 +32,9 @@ logic full;
 logic [PTR_WIDTH-1:0] head_ptr;
 logic [PTR_WIDTH-1:0] tail_ptr;
 
+ // register storing the last committed instruction in the event of a flush and we need to remove uncommitted entries
+logic [$clog2(SDQ_ENTRIES)-1:0] last_cmit_idx_reg;
+
 // TODO: How does flush interact with Memory System
 always_ff @(posedge clk_i) begin
     if(rst_i) begin
@@ -40,6 +44,16 @@ always_ff @(posedge clk_i) begin
 
         for(int i = 0; i < SDQ_ENTRIES; i++) begin
             sdq[i] <= '0;
+        end
+
+        last_cmit_idx_reg <= '0;
+
+    end else if(flush_i) begin
+        head_ptr <= head_ptr;
+        tail_ptr <= {tail_ptr[PTR_WIDTH],last_cmit_idx_reg};
+
+        for(int i = 0; i < SDQ_ENTRIES; i++) begin
+            sdq[i].valid <= sdq[i].committed;
         end
 
     end else begin
@@ -71,6 +85,7 @@ always_ff @(posedge clk_i) begin
         //
         if(cmit_vld_i) begin
             sdq[cmit_idx_i].committed <= 1'b1;
+            last_cmit_idx_reg <= cmit_idx_i; 
         end
 
         if(exec_vld_i) begin

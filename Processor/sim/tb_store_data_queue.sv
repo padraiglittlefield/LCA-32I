@@ -13,6 +13,7 @@ module tb_store_data_queue;
 
     logic clk;
     logic rst;
+    logic flush = 0;
     integer cycle_count = 0;
 
     initial begin
@@ -57,6 +58,7 @@ module tb_store_data_queue;
     store_data_queue dut (
         .clk_i(clk),
         .rst_i(rst),
+        .flush_i(flush),
         .disp_vld_i(disp_vld_i),
         .store_data_i(store_data_i),     
         .cmit_vld_i(cmit_vld_i),       

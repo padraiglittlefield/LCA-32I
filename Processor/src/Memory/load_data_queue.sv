@@ -1,6 +1,7 @@
 module load_data_queue (
     input   logic                                       clk_i,
     input   logic                                       rst_i,
+    input   logic                                       flush_i,
     input   logic                                       disp_vld_i,
     input   logic           [$clog2(SDQ_ENTRIES):0]     disp_sdq_marker_i,
     output  logic           [$clog2(LDQ_ENTRIES)-1:0]   ldq_disp_idx_o,
@@ -20,7 +21,7 @@ ldq_entry_t ldq [0:LDQ_ENTRIES-1];
 // Allocate new ldq entries and update entries with correct addr
 
 always_ff @(posedge clk_i) begin
-    if(rst_i) begin
+    if(rst_i || flush_i) begin
         for(int i = 0; i<LDQ_ENTRIES; i++)begin
             ldq[i] <= '0;
         end

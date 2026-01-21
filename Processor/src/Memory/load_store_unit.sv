@@ -8,6 +8,7 @@ module load_store_unit (
 load_data_queue u_ldq (
     .clk_i(),
     .rst_i(),
+    .flush_i(),
     .disp_vld_i(),
     .disp_dsq_marker_i(),
     .ldq_disp_idx_o(),
@@ -23,6 +24,7 @@ load_data_queue u_ldq (
 store_data_queue u_sdq (
     .clk_i(),
     .rst_i(),
+    .flush_i(),
     .disp_vld_i(),
     .store_data_i(),
     .cmit_vld_i(),
@@ -43,8 +45,8 @@ store_data_queue u_sdq (
 
 cache_controller u_cache_controller(
     .clk_i(),
-    .rst_i(),
-    
+    .rst_i()
+
 );
 
 
