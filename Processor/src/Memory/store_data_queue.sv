@@ -11,6 +11,7 @@ module store_data_queue #(
     input   logic   [31:0]                      exec_addr_i,
     output  logic   [$clog2(SDQ_ENTRIES)-1:0]   sdq_alloc_idx_o,  // index of recently allocated instr (for use as sdq_marker)
     output  logic                               sdq_full_o,       // whether the sdq is full
+    input   logic                               issue_en_i,
     output  sdq_entry_t                         issue_entry_o, // output entry of issuing instruction
     output  logic                               issue_vld_o,        // valid issue
     input   logic                               ld_vld_i,
@@ -57,7 +58,7 @@ always_ff @(posedge clk_i) begin
             tail_ptr <= tail_ptr;
         end
         // check if we can issue a committed store
-        if(sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed) begin
+        if(issue_en_i && (sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed)) begin
             issue_entry_o <= sdq[head_ptr]; 
             issue_vld_o <= sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed;
             head_ptr <= head_ptr + 1;

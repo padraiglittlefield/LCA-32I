@@ -1,3 +1,10 @@
+/*  Cache Controller! 
+
+* L1 Data Cache plus MSHR
+* Currently single cycle for reading from cache, highly unrealistic and should make it at least 2 soon
+
+*/
+
 module cache_controller (
     input logic clk_i,
     input logic rst_i,
@@ -27,7 +34,7 @@ module cache_controller (
         .wb_evicted_block()    
     );
 
-
+    // TODO: should speculative loads affect the cache? should we not issue any repairs until we know its not speculative
     miss_status_history_register mshr (
         .clk_i(clk_i),
         .rst_i(rst_i),
