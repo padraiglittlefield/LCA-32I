@@ -132,6 +132,8 @@ typedef struct packed {
     logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx;
 } sdq_entry_t;
 
+parameter NUM_MSHR_ENTS = 16;
+
 typedef struct packed {
     logic [CACHE_BLOCK_SIZE-1:0] data;
 } cache_data_block;

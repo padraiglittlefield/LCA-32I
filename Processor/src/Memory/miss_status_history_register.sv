@@ -5,35 +5,43 @@
 */
 import CORE_PKG::*;
 
-module miss_status_history_register #(
-    parameter NUM_ENTS = 16
-)(
-    input   logic                               clk_i,
-    input   logic                               rst_i,
-    input   logic                               flush_i,
-    input   logic                               repair_complete_i,    
-    input   logic                               repair_ack_i,
-    input   logic                               ld_alloc_en_i, // on a load miss
-    input   logic   [31:0]                      ld_alloc_addr_i,
-    input   logic   [$clog2(ROB_ENTRIES)-1:0]   ld_alloc_rob_idx_i,
-    input   logic                               st_alloc_en_i, // on a store miss
-    input   logic   [31:0]                      st_alloc_addr_i,
-    input   logic   [31:0]                      st_alloc_data_i,
-    input   logic   [$clog2(ROB_ENTRIES)-1:0]   st_alloc_rob_idx_i,
-    output  logic                               ld_full_o,
-    output  logic                               st_full_o,
-    output  logic                               repair_req_o,
-    output  logic   [31:0]                      repair_req_addr_o,
-    output  logic   [31:0]                      repair_req_data_o,
-    output  logic   [$clog2(ROB_ENTRIES)-1:0]   repair_req_rob_idx_o,
-    output  logic                               repair_is_store_o
+module miss_status_history_register (
+    input   logic                                   clk_i,
+    input   logic                                   rst_i,
+    input   logic                                   flush_i,
+    input   logic                                   repair_complete_i,    
+    input   logic                                   repair_ack_i,
+    input   logic                                   ld_alloc_en_i, // on a load miss
+    input   logic   [31:0]                          ld_alloc_addr_i,
+    output  logic   [$clog2(NUM_MSHR_ENTS/2)-1:0]   ld_alloc_idx_o,
+    output  logic                                   ld_alloc_vld_i,
+    input   logic   [$clog2(ROB_ENTRIES)-1:0]       ld_alloc_rob_idx_i,
+    input   logic   [$clog2(NUM_MSHR_ENTS/2)-1:0]   ld_update_idx_i,
+    input   logic                                   ld_update_vld_i,
+    input   logic                                   ld_hit_miss_i,  // (1/0) hit/miss 
+    input   logic                                   st_alloc_en_i, // on a store miss
+    input   logic   [31:0]                          st_alloc_addr_i,
+    input   logic   [31:0]                          st_alloc_data_i,
+    output  logic   [$clog2(NUM_MSHR_ENTS/2)-1:0]   st_alloc_idx_o,
+    input   logic   [$clog2(NUM_MSHR_ENTS/2)-1:0]   st_update_idx_i,
+    input   logic                                   st_update_vld_i,
+    input   logic                                   st_hit_miss_i,
+    output  logic                                   st_alloc_vld_o,
+    input   logic   [$clog2(ROB_ENTRIES)-1:0]       st_alloc_rob_idx_i,
+    output  logic                                   ld_full_o,
+    output  logic                                   st_full_o,
+    output  logic                                   repair_req_o,
+    output  logic   [31:0]                          repair_req_addr_o,
+    output  logic   [31:0]                          repair_req_data_o,
+    output  logic   [$clog2(ROB_ENTRIES)-1:0]       repair_req_rob_idx_o,
+    output  logic                                   repair_is_store_o
 );
 
 typedef struct packed {
     logic valid_bit;
     logic [31:0] addr;
     logic [31:0] data;
-    // logic miss_bit;     // if we're here, we've missed
+    logic miss_bit;
     logic [$clog2(ROB_ENTRIES)-1:0] rob_idx; 
 } mshr_ent;
 
@@ -51,6 +59,8 @@ logic ld_alloc_idx_found;
 always_comb begin
     ld_alloc_idx = '0;
     ld_alloc_idx_found = 1'b0;
+    ld_alloc_idx_o = '0;
+    ld_alloc_vld_i = 1'b0;
 
     for(int i = 0; i < NUM_ENTS/2; i++) begin
         mshr_ld_free[i] = ~mshr_ld[i].valid_bit;
@@ -62,6 +72,8 @@ always_comb begin
         if (mshr_ld_free[i] && !ld_alloc_idx_found) begin
             ld_alloc_idx = i;
             ld_alloc_idx_found = 1'b1;
+            ld_alloc_idx_o = ld_alloc_idx;
+            ld_alloc_vld_i = 1'b1;
         end
     end
 end
@@ -75,6 +87,8 @@ logic st_alloc_idx_found;
 always_comb begin
     st_alloc_idx = '0;
     st_alloc_idx_found = 1'b0;
+    st_alloc_idx_o = '0;
+    st_alloc_vld_o = 1'b0;
 
     for(int i = 0; i < NUM_ENTS/2; i++) begin
         mshr_st_free[i] = ~mshr_st[i].valid_bit;
@@ -86,6 +100,8 @@ always_comb begin
         if (mshr_st_free[i] && !st_alloc_idx_found) begin
             st_alloc_idx = i;
             st_alloc_idx_found = 1'b1;
+            st_alloc_idx_o = st_alloc_idx;
+            st_alloc_vld_o = 1'b1;
         end
     end
 end
