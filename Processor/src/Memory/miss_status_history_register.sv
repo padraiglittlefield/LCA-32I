@@ -10,6 +10,7 @@ module miss_status_history_register #(
 )(
     input   logic                               clk_i,
     input   logic                               rst_i,
+    input   logic                               flush_i,
     input   logic                               repair_complete_i,    
     input   logic                               repair_ack_i,
     input   logic                               ld_alloc_en_i, // on a load miss
@@ -95,6 +96,9 @@ always_ff @(posedge clk_i) begin
             mshr_ld[i] <= '0;
             mshr_st[i] <= '0;
         end
+    end else if (flush_i) begin
+        mshr_ld[i] <= '0;
+        mshr_st[i] <= '0;
     end else begin
         if(ld_alloc_en_i && !ld_full_o) begin 
             mshr_ld[ld_alloc_idx].valid_bit <= 1'b1;

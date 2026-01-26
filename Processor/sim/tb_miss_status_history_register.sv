@@ -1,0 +1,3 @@
+module tb_miss_status_history_register;
+
+endmodule
