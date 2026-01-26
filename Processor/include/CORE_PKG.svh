@@ -109,8 +109,8 @@ typedef struct packed {
 
 // ======== Memory ======== //
 
-localparam LDQ_ENTRIES = 16;
-localparam SDQ_ENTRIES = 16;
+parameter LDQ_ENTRIES = 16;
+parameter SDQ_ENTRIES = 16;
 
 typedef struct packed {
     logic valid;
@@ -132,6 +132,23 @@ typedef struct packed {
     logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx;
 } sdq_entry_t;
 
+typedef struct packed {
+    logic [CACHE_BLOCK_SIZE-1:0] data;
+} cache_data_block;
+
+typedef struct packed {
+    logic [NUM_TAG_BITS-1:0] tag;
+    logic valid;
+    logic dirty;
+} cache_metadata_block;
+
+parameter CACHE_BLOCK_SIZE = 128;
+parameter NUM_CACHE_ENTS = 64;
+// |      Tag     | Index | Block Offset | Byte Offset |
+// |      22      |   6   |     2        |      2      |
+parameter NUM_IDX_BITS = $clog2(NUM_CACHE_ENTS);
+parameter BLOCK_OFFSET_BITS = $clog2((CACHE_BLOCK_SIZE)/32);
+parameter NUM_TAG_BITS = 32 - NUM_IDX_BITS - BLOCK_OFFSET_BITS - 2;
 
 endpackage
 `endif
