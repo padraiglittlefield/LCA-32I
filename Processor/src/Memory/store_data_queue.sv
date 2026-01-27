@@ -5,21 +5,23 @@ module store_data_queue #(
     input   logic                               flush_i,
     input   logic                               disp_vld_i,
     input   logic   [31:0]                      store_data_i,       // whether the instr is valid
-    input   logic                               cmit_vld_i,       // valid commit from rob
-    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   cmit_idx_i,       // index of entry holding committed instruction
+    input   logic                               cmit_vld_i,         // valid commit from rob
+    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   cmit_idx_i,         // index of entry holding committed instruction
     input   logic                               exec_vld_i,
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   exec_sdq_idx_i,
     input   logic   [31:0]                      exec_addr_i,
-    output  logic   [$clog2(SDQ_ENTRIES)-1:0]   sdq_alloc_idx_o,  // index of recently allocated instr (for use as sdq_marker)
-    output  logic                               sdq_full_o,       // whether the sdq is full
+    output  logic   [$clog2(SDQ_ENTRIES)-1:0]   sdq_alloc_idx_o,    // index of recently allocated instr (for use as sdq_marker)
+    output  logic                               sdq_full_o,         // whether the sdq is full
     input   logic                               issue_en_i,
-    output  sdq_entry_t                         issue_entry_o, // output entry of issuing instruction
+    output  sdq_entry_t                         issue_entry_o,      // output entry of issuing instruction
     output  logic                               issue_vld_o,        // valid issue
     input   logic                               ld_vld_i,
     input   logic   [31:0]                      ld_addr_i,
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   ld_sdq_marker_i,
     output  logic                               ld_hit_o,
-    output  logic   [31:0]                      ld_data_o
+    output  logic   [31:0]                      ld_data_o,
+    input   logic                               clear_sdq_ent_vld_i,     
+    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   clear_sdq_ent_idx_i
 
 );
 
@@ -91,7 +93,7 @@ always_ff @(posedge clk_i) begin
         if(exec_vld_i) begin
             sdq[exec_sdq_idx_i].addr_valid <= 1'b1;
             sdq[exec_sdq_idx_i].addr <= exec_addr_i;
-        end
+        end 
     end
 end
 

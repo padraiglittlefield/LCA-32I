@@ -1,17 +1,17 @@
 module load_data_queue (
-    input   logic                                       clk_i,
-    input   logic                                       rst_i,
-    input   logic                                       flush_i,
-    input   logic                                       disp_vld_i,
-    input   logic           [$clog2(SDQ_ENTRIES):0]     disp_sdq_marker_i,
-    output  logic           [$clog2(LDQ_ENTRIES)-1:0]   ldq_disp_idx_o,
-    output  logic                                       ldq_full_o,
-    input   logic                                       exec_vld_i,
-    input   logic           [$clog2(LDQ_ENTRIES)-1:0]   exec_ldq_idx_i,
-    input   logic           [31:0]                      exec_addr_i,
-    input   logic                                       issue_en_i,   // can we issue a load
-    output  ldq_entry_t                                 issue_entry_o,
-    output  logic                                       issue_vld_o
+    input   logic                                       clk_i,              // clock
+    input   logic                                       rst_i,              // reset
+    input   logic                                       flush_i,            // flush
+    input   logic                                       disp_vld_i,         // is dispatch valid
+    input   logic           [$clog2(SDQ_ENTRIES):0]     disp_sdq_marker_i,  // "SDQ Marker" for this entry (basically tracks relative order between stores)
+    output  logic           [$clog2(LDQ_ENTRIES)-1:0]   ldq_disp_idx_o,     // index of recently allocated entry
+    output  logic                                       ldq_full_o,         // is ldq full
+    input   logic                                       exec_vld_i,         // is execute valid?
+    input   logic           [$clog2(LDQ_ENTRIES)-1:0]   exec_ldq_idx_i,     // ldq entry to update
+    input   logic           [31:0]                      exec_addr_i,        // updated address from execute
+    input   logic                                       issue_en_i,         // can we issue a load?
+    output  ldq_entry_t                                 issue_entry_o,      // load entry out
+    output  logic                                       issue_vld_o         // issue valid
 
 );
 
@@ -101,7 +101,7 @@ always_comb begin
 end
 
 always_ff @(posedge clk_i) begin
-    if (!rst_i && issue_vld_o && issue_en_i) begin
+    if (!rst_i && issue_vld_o && issue_en_i) begin  // whenever we issue an entry, clear it from the ldq
         ldq[issue_idx].valid <= 1'b0;
     end
 end

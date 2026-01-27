@@ -13,20 +13,10 @@ module miss_status_history_register (
     input   logic                                   repair_ack_i,
     input   logic                                   ld_alloc_en_i, // on a load miss
     input   logic   [31:0]                          ld_alloc_addr_i,
-    output  logic   [$clog2(NUM_MSHR_ENTS/2)-1:0]   ld_alloc_idx_o,
-    output  logic                                   ld_alloc_vld_i,
     input   logic   [$clog2(ROB_ENTRIES)-1:0]       ld_alloc_rob_idx_i,
-    input   logic   [$clog2(NUM_MSHR_ENTS/2)-1:0]   ld_update_idx_i,
-    input   logic                                   ld_update_vld_i,
-    input   logic                                   ld_hit_miss_i,  // (1/0) hit/miss 
     input   logic                                   st_alloc_en_i, // on a store miss
     input   logic   [31:0]                          st_alloc_addr_i,
     input   logic   [31:0]                          st_alloc_data_i,
-    output  logic   [$clog2(NUM_MSHR_ENTS/2)-1:0]   st_alloc_idx_o,
-    input   logic   [$clog2(NUM_MSHR_ENTS/2)-1:0]   st_update_idx_i,
-    input   logic                                   st_update_vld_i,
-    input   logic                                   st_hit_miss_i,
-    output  logic                                   st_alloc_vld_o,
     input   logic   [$clog2(ROB_ENTRIES)-1:0]       st_alloc_rob_idx_i,
     output  logic                                   ld_full_o,
     output  logic                                   st_full_o,
@@ -41,19 +31,17 @@ typedef struct packed {
     logic valid_bit;
     logic [31:0] addr;
     logic [31:0] data;
-    logic miss_bit;
+    // logic miss_bit; // implicitly, if we're here, we 
     logic [$clog2(ROB_ENTRIES)-1:0] rob_idx; 
 } mshr_ent;
 
-mshr_ent mshr_ld [NUM_ENTS/2];
-mshr_ent mshr_st [NUM_ENTS/2];
-
-
+mshr_ent mshr_ld [NUM_MSHR_ENTS/2];
+mshr_ent mshr_st [NUM_MSHR_ENTS/2];
 
 // =============== Entry Allocation Logic ================== //
 
-logic [(NUM_ENTS/2)-1:0] mshr_ld_free;
-logic [$clog2(NUM_ENTS/2)-1:0] ld_alloc_idx;
+logic [(NUM_MSHR_ENTS/2)-1:0] mshr_ld_free;
+logic [$clog2(NUM_MSHR_ENTS/2)-1:0] ld_alloc_idx;
 logic ld_alloc_idx_found;
 
 always_comb begin
@@ -62,13 +50,13 @@ always_comb begin
     ld_alloc_idx_o = '0;
     ld_alloc_vld_i = 1'b0;
 
-    for(int i = 0; i < NUM_ENTS/2; i++) begin
+    for(int i = 0; i < NUM_MSHR_ENTS/2; i++) begin
         mshr_ld_free[i] = ~mshr_ld[i].valid_bit;
     end
 
     ld_full_o = ~|mshr_ld_free;
 
-    for(int i = 0; i < NUM_ENTS/2; i++) begin
+    for(int i = 0; i < NUM_MSHR_ENTS/2; i++) begin
         if (mshr_ld_free[i] && !ld_alloc_idx_found) begin
             ld_alloc_idx = i;
             ld_alloc_idx_found = 1'b1;
@@ -80,8 +68,8 @@ end
 
 
 
-logic [(NUM_ENTS/2)-1:0] mshr_st_free;
-logic [$clog2(NUM_ENTS/2)-1:0] st_alloc_idx;
+logic [(NUM_MSHR_ENTS/2)-1:0] mshr_st_free;
+logic [$clog2(NUM_MSHR_ENTS/2)-1:0] st_alloc_idx;
 logic st_alloc_idx_found;
 
 always_comb begin
@@ -90,13 +78,13 @@ always_comb begin
     st_alloc_idx_o = '0;
     st_alloc_vld_o = 1'b0;
 
-    for(int i = 0; i < NUM_ENTS/2; i++) begin
+    for(int i = 0; i < NUM_MSHR_ENTS/2; i++) begin
         mshr_st_free[i] = ~mshr_st[i].valid_bit;
     end
 
     st_full_o = ~|mshr_st_free;
 
-    for(int i = 0; i < NUM_ENTS/2; i++) begin
+    for(int i = 0; i < NUM_MSHR_ENTS/2; i++) begin
         if (mshr_st_free[i] && !st_alloc_idx_found) begin
             st_alloc_idx = i;
             st_alloc_idx_found = 1'b1;
@@ -108,7 +96,7 @@ end
 
 always_ff @(posedge clk_i) begin
     if(rst_i) begin
-        for(int i=0; i <NUM_ENTS/2; i++) begin
+        for(int i=0; i <NUM_MSHR_ENTS/2; i++) begin
             mshr_ld[i] <= '0;
             mshr_st[i] <= '0;
         end
@@ -152,18 +140,18 @@ logic start_repair_ld;
 logic start_repair_st;
 
 
-logic [$clog2(NUM_ENTS/2)-1:0] repair_ptr;
-logic [$clog2(NUM_ENTS/2)-1:0] repair_ptr_reg;
+logic [$clog2(NUM_MSHR_ENTS/2)-1:0] repair_ptr;
+logic [$clog2(NUM_MSHR_ENTS/2)-1:0] repair_ptr_reg;
 
 
-logic [(NUM_ENTS/2)-1:0] ld_repair_req;
-logic [(NUM_ENTS/2)-1:0] st_repair_req;
+logic [(NUM_MSHR_ENTS/2)-1:0] ld_repair_req;
+logic [(NUM_MSHR_ENTS/2)-1:0] st_repair_req;
 
 always_comb begin
     ld_repair_req = '0;
     st_repair_req = '0;
 
-    for(int i = 0; i < NUM_ENTS/2; i++) begin
+    for(int i = 0; i < NUM_MSHR_ENTS/2; i++) begin
         // ld_repair_req[i] = mshr_ld[i].valid_bit && !mshr_ld[i].repaired;
         // st_repair_req[i] = mshr_st[i].valid_bit && !mshr_st[i].repaired;
         ld_repair_req[i] = mshr_ld[i].valid_bit;
@@ -177,14 +165,14 @@ always_comb begin
         repair_ptr = '0;
 
         if(|ld_repair_req) begin    // check if there is a load that needs to be repaired (they take priority over stores)
-            for(int i = (NUM_ENTS/2)-1; i >= 0; i--) begin
+            for(int i = (NUM_MSHR_ENTS/2)-1; i >= 0; i--) begin
                 if(ld_repair_req[i]) begin
                     repair_ptr = i;
                     start_repair_ld = 1'b1;
                 end
             end
         end else if (|st_repair_req) begin  // check if there is a store that needs to be repaired
-            for(int i = (NUM_ENTS/2)-1; i >= 0; i--) begin
+            for(int i = (NUM_MSHR_ENTS/2)-1; i >= 0; i--) begin
                 if(st_repair_req[i]) begin
                     repair_ptr = i;
                     start_repair_st = 1'b1;
