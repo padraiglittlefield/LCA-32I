@@ -10,7 +10,7 @@ module cache_controller (
     input   logic                               flush_i,
 
     input   logic                               lsu_req_vld_i,
-    input   logic                               lsu_req_rd_wr_i,
+    input   logic                               lsu_req_wr_rd_i,
     input   logic   [31:0]                      lsu_req_addr_i,
     input   logic   [31:0]                      lsu_req_data_i,
     input   logic   [$clog2(ROB_ENTRIES)-1:0]   lsu_req_rob_idx_i,
@@ -73,7 +73,7 @@ module cache_controller (
             rd_data_reg         <= rd_data_wire;
             rd_tag_reg          <= rd_tag_wire;
             req_vld_reg         <= lsu_req_vld_i;
-            req_rd_wr_reg       <= lsu_req_rd_wr_i;
+            req_rd_wr_reg       <= lsu_req_wr_rd_i;
             req_addr_reg        <= lsu_req_addr_i;
             req_st_data_reg     <= lsu_req_data_i;  
             req_rob_idx_reg     <= lsu_req_rob_idx_i;
@@ -87,26 +87,36 @@ module cache_controller (
     logic cache_wr_en;
     cache_data_block write_block;
     logic [31:0] write_addr;
-    logic ld_alloc_mshr;
-    logic st_alloc_mshr;
+    logic ld_alloc_mshr_en;
+    logic st_alloc_mshr_en;
 
+    always_comb begin
+        
+        // check tag to determine if the access hit
+        req_tag = lsu_req_addr_i[31-:NUM_TAG_BITS];
+        req_hit = req_vld_reg && rd_tag_reg.valid && (req_tag == rd_tag_reg.tag);
+        
+        // if missed, send to MSHR
+        ld_alloc_mshr_en = req_vld_reg && !req_hit && !lsu_req_wr_rd_i;
+        st_alloc_mshr_en = req_vld_reg && !req_hit && lsu_req_wr_rd_i;
 
-
+        // update for write
+        cache_wr_en = lsu_req_wr_rd_i && req_hit;
+        write_block = rd_data_reg.data;
+    end
 
     // TODO: should speculative loads affect the cache? should we not issue any repairs until we know its not speculative
     miss_status_history_register mshr (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .flush_i(flush_i),
-        .ld_alloc_en_i(),
-        .ld_alloc_addr_i(),
-        .ld_alloc_vld_i(),
-        .ld_alloc_rob_idx_i(),
-        .st_alloc_en_i(),
-        .st_alloc_addr_i(),
-        .st_alloc_data_i(),
-        .st_alloc_vld_o(),
-        .st_alloc_rob_idx_i(),
+        .ld_alloc_en_i(ld_alloc_mshr_en),
+        .ld_alloc_addr_i(lsu_req_addr_i),
+        .ld_alloc_rob_idx_i(lsu_req_rob_idx_i),
+        .st_alloc_en_i(st_alloc_mshr_en),
+        .st_alloc_addr_i(lsu_req_addr_i),
+        .st_alloc_data_i(lsu_req_data_i),
+        .st_alloc_rob_idx_i(lsu_req_rob_idx_i),
         .ld_full_o(),
         .st_full_o(),
         .repair_complete_i(),    
