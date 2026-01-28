@@ -33,14 +33,21 @@ module cache_controller (
     cache_data_block rd_data_wire;
     cache_metadata_block rd_tag_wire;
 
+    cache_data_block wr_data_wire;
+    logic [31:0] wr_addr_wire;
+    logic wr_en;
+    logic is_repair;
+    logic is_repair_dirty;
+
+
     data_cache u_data_cache (
         .clk_i(clk_i),
         .rst_i(rst_i),
-        .wr_en(),
-        .is_repair_i(),
-        .is_repair_dirty_i(),
-        .wr_addr_i(),
-        .wr_data_i(),
+        .wr_en(wr_en),
+        .is_repair_i(is_repair),
+        .is_repair_dirty_i(is_repair_dirty),
+        .wr_addr_i(wr_addr_wire),
+        .wr_data_i(wr_data_wire),
         .rd_en(lsu_req_vld_i),
         .rd_addr_i(lsu_req_addr_i),
         .rd_data_o(rd_data_wire),
@@ -84,7 +91,7 @@ module cache_controller (
     // Tag Compare
     logic [NUM_TAG_BITS-1:0] req_tag;
     logic req_hit;
-    logic cache_wr_en;
+    logic store_wr_en;
     cache_data_block write_block;
     logic [31:0] write_addr;
     logic [BLOCK_OFFSET_BITS-1:0] write_block_offset;
@@ -102,7 +109,7 @@ module cache_controller (
         st_alloc_mshr_en = req_vld_reg && !req_hit && lsu_req_wr_rd_i;
 
         // update for write
-        cache_wr_en = lsu_req_wr_rd_i && req_hit;
+        store_wr_en = lsu_req_wr_rd_i && req_hit;
         write_block_offset = wr_addr_i[BLOCK_OFFSET_BITS+1:2];
         write_block = rd_data_reg.data;
         write_block[(write_block_offset*32)+:32] = req_st_data_reg;
@@ -119,12 +126,14 @@ module cache_controller (
     logic mshr_repair_is_store;
 
     // Controller signals for handling repairs ( )
-    logic ctrl_repair_ack;
-    logic ctrl_repair_complete;
-    logic [31:0] ctrl_repair_addr_reg;
-    logic [31:0] ctrl_repair_data_reg;
-    logic [$clog2(ROB_ENTRIES)-1:0] ctrl_repair_rob_idx_reg;
-    logic ctrl_repairing;
+    logic ctrl_repair_ack;                                      // does the controller acknowledge the request and initiate the response
+    logic ctrl_repairing;                                       // is the controller repairing?
+    logic ctrl_repair_complete;                                 // is the repair complete?
+    logic [31:0] ctrl_repair_addr_reg;                          // address of the block being retreived
+    logic [31:0] ctrl_repair_data_reg;                          // store data for the repairing block
+    logic [$clog2(ROB_ENTRIES)-1:0] ctrl_repair_rob_idx_reg;    // ROB idx of the load being repaired (for committing loads)
+    logic ctrl_repair_is_store;                                 // is the repair a write miss?
+    logic [CACHE_BLOCK_SIZE-1:0] mem_resp_block_reg;          // Response block from main memory
 
     always_ff @(posedge clk) begin
         if(rst_i) begin
@@ -132,22 +141,77 @@ module cache_controller (
             ctrl_repair_addr_reg    <= '0;
             ctrl_repair_data_reg    <= '0;
             ctrl_repair_rob_idx_reg <= '0;
+            ctrl_repair_complete    <= '0;
+            ctrl_repair_is_store    <= '0;
+            repair_resp_reg         <= '0;
         end else begin
-            if(mshr_repair_req && !ctrl_repair_ack) begin
+
+            // Starting Repair
+            if(mshr_repair_req && !ctrl_repair_ack && !ctrl_repairing) begin
                 ctrl_repair_ack         <= 1'b1;
                 ctrl_repair_addr_reg    <= mshr_repair_addr;
                 ctrl_repair_data_reg    <= mshr_repair_data;
                 ctrl_repair_rob_idx_reg <= mshr_repair_rob_idx;
+                ctrl_repair_is_store    <= mshr_repair_is_store;
                 ctrl_repairing          <= 1'b1;
-            end else if (ctrl_repair_ack) begin
-                ctrl_repair_ack         <= 1'b0;
+            end 
+            
+            if (ctrl_repair_ack) begin
+                ctrl_repair_ack <= 1'b0;
+            end
+
+            // Ending Repair
+            if(ctrl_repairing && mem_resp_vld_i) begin
+                ctrl_repair_complete    <= 1'b1;
+                ctrl_repairing          <= 1'b0;
+                mem_resp_block_reg         <= mem_resp_data_i;
+            end
+
+            // Cleanup
+            if(ctrl_repair_complete) begin
+                ctrl_repair_complete <= 1'b0;
             end
         end
     end
 
+    logic [BLOCK_OFFSET_BITS-1:0] cmt_block_offset;
+    cache_data_block repair_wr_data;
+    logic [31:0] repair_wr_addr;
+    logic repair_wr_en;
+    logic is_repair;
+    logic is_repair_dirty;
+
     always_comb begin : main_memory_request
-        mem_req_vld_o = ctrl_repair_ack;
-        mem_req_addr_o = ctrl_repair_addr_reg;
+        // set defaults
+        cmt_ld_vld_o        = '0;
+        cmt_block_offset    = '0;
+        cmt_ld_data_o       = '0;
+        cmt_rob_idx_o       = '0;
+
+        mem_req_vld_o       = ctrl_repair_ack;
+        mem_req_addr_o      = ctrl_repair_addr_reg;
+        cmt_block_offset    = ctrl_repair_addr_reg[(BLOCK_OFFSET_BITS+2)-1:2];
+
+        if(ctrl_repair_complete) begin
+            repair_wr_addr  = ctrl_repair_addr_reg;
+            repair_stall    = 1'b1;
+            if(ctrl_repair_is_store) begin  // repair was store, update data to be written to the cache
+                repair_wr_en = 1'b1;
+                is_repair_dirty = 1'b1;
+                repair_wr_data.data = mem_resp_block_reg;
+                repair_wr_data.data[(cmt_block_offset*32)+:32] = ctrl_repair_data_reg;
+            end else begin                  // repair was load, send the data to the ROB to commit the load
+                cmt_ld_vld_o        = 1'b1;
+                cmt_ld_data_o       = mem_resp_block_reg[(cmt_block_offset*32)+:32];  // extract the actual load data
+                cmt_rob_idx_o       = ctrl_repair_rob_idx_reg;
+
+            end
+        end
+    end
+
+
+    always_comb begin
+
     end
 
     miss_status_history_register mshr (
