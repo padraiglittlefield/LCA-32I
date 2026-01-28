@@ -87,6 +87,7 @@ module cache_controller (
     logic cache_wr_en;
     cache_data_block write_block;
     logic [31:0] write_addr;
+    logic [BLOCK_OFFSET_BITS-1:0] write_block_offset;
     logic ld_alloc_mshr_en;
     logic st_alloc_mshr_en;
 
@@ -96,16 +97,59 @@ module cache_controller (
         req_tag = lsu_req_addr_i[31-:NUM_TAG_BITS];
         req_hit = req_vld_reg && rd_tag_reg.valid && (req_tag == rd_tag_reg.tag);
         
-        // if missed, send to MSHR
+        // if access request missed, send to MSHR
         ld_alloc_mshr_en = req_vld_reg && !req_hit && !lsu_req_wr_rd_i;
         st_alloc_mshr_en = req_vld_reg && !req_hit && lsu_req_wr_rd_i;
 
         // update for write
         cache_wr_en = lsu_req_wr_rd_i && req_hit;
+        write_block_offset = wr_addr_i[BLOCK_OFFSET_BITS+1:2];
         write_block = rd_data_reg.data;
+        write_block[(write_block_offset*32)+:32] = req_st_data_reg;
+        
     end
 
-    // TODO: should speculative loads affect the cache? should we not issue any repairs until we know its not speculative
+    // Signals for MSHR
+    logic ld_mshr_full; // TODO: Add logic to stall when the MSHR is full
+    logic st_mshr_full;
+    logic mshr_repair_req;
+    logic [31:0] mshr_repair_addr;
+    logic [31:0] mshr_repair_data;
+    logic [$clog2(ROB_ENTRIES)-1:0] mshr_repair_rob_idx;
+    logic mshr_repair_is_store;
+
+    // Controller signals for handling repairs ( )
+    logic ctrl_repair_ack;
+    logic ctrl_repair_complete;
+    logic [31:0] ctrl_repair_addr_reg;
+    logic [31:0] ctrl_repair_data_reg;
+    logic [$clog2(ROB_ENTRIES)-1:0] ctrl_repair_rob_idx_reg;
+    logic ctrl_repairing;
+
+    always_ff @(posedge clk) begin
+        if(rst_i) begin
+            ctrl_repair_ack         <= '0;
+            ctrl_repair_addr_reg    <= '0;
+            ctrl_repair_data_reg    <= '0;
+            ctrl_repair_rob_idx_reg <= '0;
+        end else begin
+            if(mshr_repair_req && !ctrl_repair_ack) begin
+                ctrl_repair_ack         <= 1'b1;
+                ctrl_repair_addr_reg    <= mshr_repair_addr;
+                ctrl_repair_data_reg    <= mshr_repair_data;
+                ctrl_repair_rob_idx_reg <= mshr_repair_rob_idx;
+                ctrl_repairing          <= 1'b1;
+            end else if (ctrl_repair_ack) begin
+                ctrl_repair_ack         <= 1'b0;
+            end
+        end
+    end
+
+    always_comb begin : main_memory_request
+        mem_req_vld_o = ctrl_repair_ack;
+        mem_req_addr_o = ctrl_repair_addr_reg;
+    end
+
     miss_status_history_register mshr (
         .clk_i(clk_i),
         .rst_i(rst_i),
@@ -117,15 +161,17 @@ module cache_controller (
         .st_alloc_addr_i(lsu_req_addr_i),
         .st_alloc_data_i(lsu_req_data_i),
         .st_alloc_rob_idx_i(lsu_req_rob_idx_i),
-        .ld_full_o(),
-        .st_full_o(),
-        .repair_complete_i(),    
-        .repair_ack_i(),
-        .repair_req_o(),
-        .repair_req_addr_o(),
-        .repair_req_data_o(),
-        .repair_req_rob_idx_o(),
-        .repair_is_store_o()
+        .ld_full_o(ld_mshr_full),
+        .st_full_o(st_mshr_full),
+        .repair_req_o(mshr_repair_req),
+        .repair_req_addr_o(mshr_repair_addr),
+        .repair_req_data_o(mshr_repair_data),
+        .repair_req_rob_idx_o(mshr_repair_rob_idx),
+        .repair_is_store_o(mshr_repair_is_store),
+        .repair_ack_i(ctrl_repair_ack)
+        .repair_complete_i(ctrl_repair_complete),    
     );
+
+
 
 endmodule

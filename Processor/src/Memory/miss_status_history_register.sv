@@ -9,8 +9,6 @@ module miss_status_history_register (
     input   logic                                   clk_i,
     input   logic                                   rst_i,
     input   logic                                   flush_i,
-    input   logic                                   repair_complete_i,    
-    input   logic                                   repair_ack_i,
     input   logic                                   ld_alloc_en_i, // on a load miss
     input   logic   [31:0]                          ld_alloc_addr_i,
     input   logic   [$clog2(ROB_ENTRIES)-1:0]       ld_alloc_rob_idx_i,
@@ -18,6 +16,8 @@ module miss_status_history_register (
     input   logic   [31:0]                          st_alloc_addr_i,
     input   logic   [31:0]                          st_alloc_data_i,
     input   logic   [$clog2(ROB_ENTRIES)-1:0]       st_alloc_rob_idx_i,
+    input   logic                                   repair_complete_i,    
+    input   logic                                   repair_ack_i,
     output  logic                                   ld_full_o,
     output  logic                                   st_full_o,
     output  logic                                   repair_req_o,
@@ -26,6 +26,8 @@ module miss_status_history_register (
     output  logic   [$clog2(ROB_ENTRIES)-1:0]       repair_req_rob_idx_o,
     output  logic                                   repair_is_store_o
 );
+// TODO: should speculative loads affect the cache? should we not issue any repairs until we know its not speculative
+   
 
 typedef struct packed {
     logic valid_bit;
