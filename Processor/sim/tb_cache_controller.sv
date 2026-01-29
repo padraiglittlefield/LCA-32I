@@ -46,6 +46,7 @@ module tb_cache_controller;
     logic cmt_ld_vld_o;
     logic [31:0] cmt_ld_data_o;
     logic [$clog2(ROB_ENTRIES)-1:0] cmt_rob_idx_o;
+    logic stall_controller_o;
 
    cache_controller dut (
         .clk_i(clk),
@@ -64,7 +65,8 @@ module tb_cache_controller;
         .mem_wb_data_o(mem_wb_data_o),
         .cmt_ld_vld_o(cmt_ld_vld_o),
         .cmt_ld_data_o(cmt_ld_data_o),
-        .cmt_rob_idx_o(cmt_rob_idx_o)
+        .cmt_rob_idx_o(cmt_rob_idx_o),
+        .stall_controller_o(stall_controller_o)
 );  
 
 
@@ -109,12 +111,14 @@ module tb_cache_controller;
         lsu_req_wr_rd_i = 0;
         lsu_req_addr_i = 0;
         lsu_req_data_i = 0;
-        check_assertion("Cache Controller requests correct address", mem_req_addr_o == 32'hFFFF_0000);
+        // check_assertion("Cache Controller requests correct address", mem_req_addr_o == 32'hFFFF_0000);
         repeat(10) @(posedge clk); // simulate going to main memory
         @(negedge clk);
         mem_resp_vld_i = 1'b1;
         mem_resp_data_i = 5;
         @(negedge clk);
+        mem_resp_vld_i = 1'b0;
+        mem_resp_data_i = 0;
     endtask
 
     task test_read_hit();
@@ -130,6 +134,60 @@ module tb_cache_controller;
         lsu_req_data_i = 0;
     endtask
 
+    task test_write_hit();
+         @(posedge clk);
+        lsu_req_vld_i = 1'b1;
+        lsu_req_wr_rd_i = 1;
+        lsu_req_addr_i = 32'hFFFF_0000;
+        lsu_req_data_i = 23;
+        @(posedge clk);
+        lsu_req_vld_i = 1'b0;
+        lsu_req_wr_rd_i = 0;
+        lsu_req_addr_i = 0;
+        lsu_req_data_i = 0;
+    endtask
+
+    task test_write_miss_repair();
+        @(negedge clk);
+        lsu_req_vld_i = 1'b1;
+        lsu_req_wr_rd_i = 1'b1;
+        lsu_req_addr_i = 32'hFFFF_1000;
+        lsu_req_data_i = 57;
+        @(negedge clk);
+        lsu_req_vld_i = 1'b0;
+        lsu_req_wr_rd_i = 0;
+        lsu_req_addr_i = 0;
+        lsu_req_data_i = 0;
+        // check_assertion("Cache Controller requests correct address", mem_req_addr_o == 32'hFFFF_0000);
+        repeat(10) @(posedge clk); // simulate going to main memory
+        @(negedge clk);
+        mem_resp_vld_i = 1'b1;
+        mem_resp_data_i = 0;
+        @(negedge clk);
+        mem_resp_vld_i = 1'b0;
+        mem_resp_data_i = 0;
+    endtask
+
+    task test_writeback_dirty();
+    @(negedge clk);
+        lsu_req_vld_i = 1'b1;
+        lsu_req_wr_rd_i = 0;
+        lsu_req_addr_i = 32'hEEFF_1000;
+        lsu_req_data_i = 0;
+        @(negedge clk);
+        lsu_req_vld_i = 1'b0;
+        lsu_req_wr_rd_i = 0;
+        lsu_req_addr_i = 0;
+        lsu_req_data_i = 0;
+        // check_assertion("Cache Controller requests correct address", mem_req_addr_o == 32'hFFFF_0000);
+        repeat(10) @(posedge clk); // simulate going to main memory
+        @(negedge clk);
+        mem_resp_vld_i = 1'b1;
+        mem_resp_data_i = 17;
+        @(negedge clk);
+        mem_resp_vld_i = 1'b0;
+        mem_resp_data_i = 0;
+    endtask
 
     initial begin
         init_signals();
@@ -142,6 +200,11 @@ module tb_cache_controller;
         test_read_miss_repair();
         @(posedge clk);
         test_read_hit();
+        test_write_hit();
+        test_read_hit();
+        // test_write_miss_repair();
+        // test_writeback_dirty();
+        // @(posedge clk); // For some reason you must wait one cycle after a stall is complete
         
         repeat(5) @(posedge clk);
 

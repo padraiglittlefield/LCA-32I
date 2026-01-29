@@ -25,8 +25,8 @@ module cache_controller (
 
     output  logic                               cmt_ld_vld_o,      // Send data to the ROB to Finish Instruction
     output  logic   [31:0]                      cmt_ld_data_o,     // Load Data
-    output  logic   [$clog2(ROB_ENTRIES)-1:0]   cmt_rob_idx_o      // Index of ROB entry to update
-
+    output  logic   [$clog2(ROB_ENTRIES)-1:0]   cmt_rob_idx_o,      // Index of ROB entry to update
+    output  logic                               stall_controller_o
 );  
 
     // Repair State Machine 
@@ -146,7 +146,10 @@ module cache_controller (
     assign mem_req_addr_o = ctrl_repair_addr_reg;
     assign ctrl_repair_ack = (repair_state == IDLE && mshr_repair_req);
     assign ctrl_repair_complete = (repair_state == REPAIR_WRITE);
+
+    // TODO: You cannot access the cache the cycle following a repair stall. It will reject the inputs  
     assign stall_controller = ctrl_repair_complete || ld_mshr_full || st_mshr_full;
+    assign stall_controller_o = stall_controller;
 
     always_ff @(posedge clk_i) begin : dcache_pipeline_registers
         if(rst_i) begin
@@ -279,7 +282,7 @@ module cache_controller (
                 repair_wr_data.data[(cmt_block_offset*32)+:32] = ctrl_repair_data_reg;
             end else begin
                 // repair was load, send the data to the ROB to commit the load
-                cmt_block_offset = ctrl_repair_addr_reg[BLOCK_OFFSET_BITS+1:2];
+                cmt_block_offset    = ctrl_repair_addr_reg[BLOCK_OFFSET_BITS+1:2];
                 cmt_ld_vld_o        = 1'b1;
                 cmt_ld_data_o       = mem_resp_block_reg[(cmt_block_offset*32)+:32];  // extract the actual load data
                 cmt_rob_idx_o       = ctrl_repair_rob_idx_reg;
@@ -287,7 +290,7 @@ module cache_controller (
             end
         end else begin
             cmt_block_offset    = req_addr_reg[BLOCK_OFFSET_BITS+1:2];
-            cmt_ld_vld_o        = req_hit;
+            cmt_ld_vld_o        = req_hit && !req_rd_wr_reg; // Only send to ROB whenever we have a load
             cmt_ld_data_o       = rd_data_reg.data[(cmt_block_offset*32)+:32];
             cmt_rob_idx_o       = req_rob_idx_reg;
         end

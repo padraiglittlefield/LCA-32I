@@ -1,14 +1,26 @@
 module load_store_unit (
-    input clk, 
-    input rst
+    input clk_i, 
+    input rst_i,
+    input flush_i,
+
+    dispatch_lsu_if.lsu disp_if,
+    execute_lsu_if.lsu exec_if,
+    lsu_reorder_buffer.lsu rob_if,
+    
+    output mem_req_vld_o,
+    output mem_req_addr_o,
+    input mem_resp_vld_i,
+    input mem_resp_data_i
 );
 
 //TODO: Go back and make sure everything works with all types of mem instructions
 //TODO: Make sure speculative state is flushed but that unspectulative state remains. Espically with the SDQ. I think LDQ can just be lfushed
+//      ^ this is mostly implemented by it needs to be double checked
+
     load_data_queue u_ldq (
-        .clk_i(),
-        .rst_i(),
-        .flush_i(),
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .flush_i(flush_i),
         .disp_vld_i(),
         .disp_dsq_marker_i(),
         .ldq_disp_idx_o(),
@@ -22,9 +34,9 @@ module load_store_unit (
     );
 
     store_data_queue u_sdq (
-        .clk_i(),
-        .rst_i(),
-        .flush_i(),
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .flush_i(flush_i),
         .disp_vld_i(),
         .store_data_i(),
         .cmit_vld_i(),
@@ -60,11 +72,12 @@ module load_store_unit (
     .mem_wb_data_o(),
     .cmt_ld_vld_o(),
     .cmt_ld_data_o(),
-    .cmt_rob_idx_o()
+    .cmt_rob_idx_o(),
+    .stall_controller_o()
 );  
 
 
-// main_memory_interface u_mmu (
+// main_memory_interface u_mmu ( // Going to move this to Chip Top instead of inside the PIPELINE
 
 // );
 
