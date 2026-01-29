@@ -142,7 +142,7 @@ module cache_controller (
     assign ctrl_repair_complete = (repair_state == REPAIR_WRITE);
     assign stall_controller = ctrl_repair_complete || ld_mshr_full || st_mshr_full;
 
-    always_ff @(posedge clk) begin : dcache_pipeline_registers
+    always_ff @(posedge clk_i) begin : dcache_pipeline_registers
         if(rst_i) begin
             rd_data_reg         <= '0;
             rd_tag_reg          <= '0;
@@ -170,10 +170,10 @@ module cache_controller (
         end
     end
 
-    always_ff @(posedge clk) begin : repair_state_machine
+    always_ff @(posedge clk_i) begin : repair_state_machine
         if(rst_i) begin
             
-            repair_state                <= '0;
+            repair_state                <= IDLE;
             ctrl_repair_addr_reg        <= '0;
             ctrl_repair_data_reg        <= '0;
             ctrl_repair_rob_idx_reg     <= '0;

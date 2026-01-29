@@ -6,25 +6,27 @@
 import CORE_PKG::*;
 
 module miss_status_history_register (
-    input   logic                                   clk_i,
-    input   logic                                   rst_i,
-    input   logic                                   flush_i,
-    input   logic                                   ld_alloc_en_i, // on a load miss
-    input   logic   [31:0]                          ld_alloc_addr_i,
-    input   logic   [$clog2(ROB_ENTRIES)-1:0]       ld_alloc_rob_idx_i,
-    input   logic                                   st_alloc_en_i, // on a store miss
-    input   logic   [31:0]                          st_alloc_addr_i,
-    input   logic   [31:0]                          st_alloc_data_i,
-    input   logic   [$clog2(ROB_ENTRIES)-1:0]       st_alloc_rob_idx_i,
-    input   logic                                   repair_complete_i,    
-    input   logic                                   repair_ack_i,
-    output  logic                                   ld_full_o,
-    output  logic                                   st_full_o,
-    output  logic                                   repair_req_o,
-    output  logic   [31:0]                          repair_req_addr_o,
-    output  logic   [31:0]                          repair_req_data_o,
-    output  logic   [$clog2(ROB_ENTRIES)-1:0]       repair_req_rob_idx_o,
-    output  logic                                   repair_is_store_o
+    input   logic                                   clk_i,                  // Clock
+    input   logic                                   rst_i,                  // RESET
+    input   logic                                   flush_i,                // FLUSH 
+    input   logic                                   ld_alloc_en_i,          // Allocate an entry for a missed load
+    input   logic   [31:0]                          ld_alloc_addr_i,        // Address of Missed Access
+    input   logic   [$clog2(ROB_ENTRIES)-1:0]       ld_alloc_rob_idx_i,     // Index of ROB Entry this Missed Load corresponds to
+
+    input   logic                                   st_alloc_en_i,          // Allocate an entry for a missed store
+    input   logic   [31:0]                          st_alloc_addr_i,        // Address of missed store
+    input   logic   [31:0]                          st_alloc_data_i,        // Data of missed store
+
+    output  logic                                   ld_full_o,              // are there load entries?
+    output  logic                                   st_full_o,              // are there any store entries?
+
+    input   logic                                   repair_complete_i,      // Repair has been completed (we can clear this entry)
+    input   logic                                   repair_ack_i,           // The Controller has acknowledged our repair request
+    output  logic                                   repair_req_o,           // Request for a missed entry to be repaired
+    output  logic   [31:0]                          repair_req_addr_o,      // Address being requested
+    output  logic   [31:0]                          repair_req_data_o,      // Data to be updated (for missed stores only)
+    output  logic   [$clog2(ROB_ENTRIES)-1:0]       repair_req_rob_idx_o,   // ROB index of missed access (for missed loads only)
+    output  logic                                   repair_is_store_o       // Was missed access a load?
 );
 // TODO: should speculative loads affect the cache? should we not issue any repairs until we know its not speculative
    
@@ -33,12 +35,17 @@ typedef struct packed {
     logic valid_bit;
     logic [31:0] addr;
     logic [31:0] data;
-    // logic miss_bit; // implicitly, if we're here, we 
     logic [$clog2(ROB_ENTRIES)-1:0] rob_idx; 
-} mshr_ent;
+} mshr_ld_ent;
 
-mshr_ent mshr_ld [NUM_MSHR_ENTS/2];
-mshr_ent mshr_st [NUM_MSHR_ENTS/2];
+typedef struct packed {
+    logic valid_bit;
+    logic [31:0] addr;
+    logic [31:0] data;
+} mshr_st_ent;
+
+mshr_ld_ent mshr_ld [NUM_MSHR_ENTS/2];
+mshr_st_ent mshr_st [NUM_MSHR_ENTS/2];
 
 // =============== Entry Allocation Logic ================== //
 
@@ -49,8 +56,6 @@ logic ld_alloc_idx_found;
 always_comb begin
     ld_alloc_idx = '0;
     ld_alloc_idx_found = 1'b0;
-    ld_alloc_idx_o = '0;
-    ld_alloc_vld_i = 1'b0;
 
     for(int i = 0; i < NUM_MSHR_ENTS/2; i++) begin
         mshr_ld_free[i] = ~mshr_ld[i].valid_bit;
@@ -62,8 +67,6 @@ always_comb begin
         if (mshr_ld_free[i] && !ld_alloc_idx_found) begin
             ld_alloc_idx = i;
             ld_alloc_idx_found = 1'b1;
-            ld_alloc_idx_o = ld_alloc_idx;
-            ld_alloc_vld_i = 1'b1;
         end
     end
 end
@@ -77,9 +80,6 @@ logic st_alloc_idx_found;
 always_comb begin
     st_alloc_idx = '0;
     st_alloc_idx_found = 1'b0;
-    st_alloc_idx_o = '0;
-    st_alloc_vld_o = 1'b0;
-
     for(int i = 0; i < NUM_MSHR_ENTS/2; i++) begin
         mshr_st_free[i] = ~mshr_st[i].valid_bit;
     end
@@ -90,8 +90,6 @@ always_comb begin
         if (mshr_st_free[i] && !st_alloc_idx_found) begin
             st_alloc_idx = i;
             st_alloc_idx_found = 1'b1;
-            st_alloc_idx_o = st_alloc_idx;
-            st_alloc_vld_o = 1'b1;
         end
     end
 end
@@ -103,8 +101,10 @@ always_ff @(posedge clk_i) begin
             mshr_st[i] <= '0;
         end
     end else if (flush_i) begin
-        mshr_ld[i] <= '0;
-        mshr_st[i] <= '0;
+        for(int i=0; i <NUM_MSHR_ENTS/2; i++) begin
+            mshr_ld[i] <= '0;
+            // mshr_st[i] <= '0; // Stores are still be valid after flush (i think)
+        end
     end else begin
         if(ld_alloc_en_i && !ld_full_o) begin 
             mshr_ld[ld_alloc_idx].valid_bit <= 1'b1;
@@ -219,6 +219,6 @@ always_comb begin
     repair_is_store_o = start_repair_st;
     repair_req_addr_o = start_repair_ld ? mshr_ld[repair_ptr].addr : (start_repair_st ? mshr_st[repair_ptr].addr : 'x);
     repair_req_data_o = start_repair_st ? mshr_st[repair_ptr].data : 'x;
-    repair_req_rob_idx_o = start_repair_ld ? mshr_ld[repair_ptr].rob_idx : (start_repair_st ? mshr_st[repair_ptr].rob_idx : 'x);
+    repair_req_rob_idx_o = start_repair_ld ? mshr_ld[repair_ptr].rob_idx : 'x;
 end
 endmodule
