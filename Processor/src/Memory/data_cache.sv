@@ -21,9 +21,8 @@ cache_metadata_block tag_array [NUM_CACHE_ENTS];
 logic [NUM_TAG_BITS-1:0] write_tag;
 logic [NUM_IDX_BITS-1:0] write_idx;
 logic [BLOCK_OFFSET_BITS-1:0] write_block_offset;
-cache_data_block write_data_block;
 cache_metadata_block write_tag_block;
-logic [CACHE_BLOCK_SIZE-1:0] write_data;
+
 
 assign write_tag = wr_addr_i[31-:NUM_TAG_BITS];
 assign write_idx = wr_addr_i[(31-NUM_TAG_BITS) -: NUM_IDX_BITS];

@@ -16,7 +16,7 @@ module cache_controller (
     input   logic   [$clog2(ROB_ENTRIES)-1:0]   lsu_req_rob_idx_i,  // ROB Index to send result to 
 
     output  logic                               mem_req_vld_o,      // Request data from main memory for repair
-    output  logic                               mem_req_addr_o,     // Address of repair request
+    output  logic   [31:0]                      mem_req_addr_o,     // Address of repair request
     input   logic                               mem_resp_vld_i,     // Memory response valid?
     input   logic   [CACHE_BLOCK_SIZE-1:0]      mem_resp_data_i,    // Repair block of data 
     
@@ -96,6 +96,12 @@ module cache_controller (
 
     logic [BLOCK_OFFSET_BITS-1:0] cmt_block_offset;
 
+    logic lsu_req_vld_reg;
+    logic lsu_req_wr_rd_reg;
+    logic [31:0] lsu_req_addr_reg;
+    logic [31:0] lsu_req_data_reg;
+    logic [$clog2(ROB_ENTRIES)-1:0] lsu_req_rob_idx_reg; 
+
 
     data_cache u_data_cache (
         .clk_i(clk_i),
@@ -105,25 +111,25 @@ module cache_controller (
         .is_repair_dirty_i(is_repair_dirty),
         .wr_addr_i(wr_addr_wire),
         .wr_data_i(wr_data_wire),
-        .rd_en(lsu_req_vld_i),
-        .rd_addr_i(lsu_req_addr_i),
+        .rd_en(lsu_req_vld_reg),
+        .rd_addr_i(lsu_req_addr_reg),
         .rd_data_o(rd_data_wire),
         .rd_tag_o(rd_tag_wire),
         .wb_evicted_en(mem_wb_vld_o),
         .wb_evicted_block(mem_wb_data_o)     
     );
 
+
     miss_status_history_register mshr (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .flush_i(flush_i),
         .ld_alloc_en_i(ld_alloc_mshr_en),
-        .ld_alloc_addr_i(lsu_req_addr_i),
-        .ld_alloc_rob_idx_i(lsu_req_rob_idx_i),
+        .ld_alloc_addr_i(req_addr_reg),
+        .ld_alloc_rob_idx_i(req_rob_idx_reg),
         .st_alloc_en_i(st_alloc_mshr_en),
-        .st_alloc_addr_i(lsu_req_addr_i),
-        .st_alloc_data_i(lsu_req_data_i),
-        .st_alloc_rob_idx_i(lsu_req_rob_idx_i),
+        .st_alloc_addr_i(req_addr_reg),
+        .st_alloc_data_i(req_st_data_reg),
         .ld_full_o(ld_mshr_full),
         .st_full_o(st_mshr_full),
         .repair_req_o(mshr_repair_req),
@@ -144,14 +150,29 @@ module cache_controller (
 
     always_ff @(posedge clk_i) begin : dcache_pipeline_registers
         if(rst_i) begin
+            
+            lsu_req_vld_reg     <= '0;
+            lsu_req_wr_rd_reg   <= '0;
+            lsu_req_addr_reg    <= '0;
+            lsu_req_data_reg    <= '0;
+            lsu_req_rob_idx_reg <= '0; 
+            
             rd_data_reg         <= '0;
             rd_tag_reg          <= '0;
             req_vld_reg         <= '0;
             req_rd_wr_reg       <= '0;
             req_addr_reg        <= '0;
             req_st_data_reg     <= '0;   
-            req_rob_idx_reg     <= '0; 
+            req_rob_idx_reg     <= '0;
+
         end else if (stall_controller) begin
+
+            lsu_req_vld_reg     <= lsu_req_vld_reg;
+            lsu_req_wr_rd_reg   <= lsu_req_wr_rd_reg;
+            lsu_req_addr_reg    <= lsu_req_addr_reg;
+            lsu_req_data_reg    <= lsu_req_data_reg;
+            lsu_req_rob_idx_reg <= lsu_req_rob_idx_reg; 
+
             rd_data_reg         <= rd_data_reg;
             rd_tag_reg          <= rd_tag_reg;
             req_vld_reg         <= req_vld_reg;
@@ -160,13 +181,20 @@ module cache_controller (
             req_st_data_reg     <= req_st_data_reg;  
             req_rob_idx_reg     <= req_rob_idx_reg;
         end else begin
+
+            lsu_req_vld_reg     <=  lsu_req_vld_i;
+            lsu_req_wr_rd_reg   <=  lsu_req_wr_rd_i;
+            lsu_req_addr_reg    <=  lsu_req_addr_i;
+            lsu_req_data_reg    <=  lsu_req_data_i;
+            lsu_req_rob_idx_reg <=  lsu_req_rob_idx_i;
+
             rd_data_reg         <= rd_data_wire;
             rd_tag_reg          <= rd_tag_wire;
-            req_vld_reg         <= lsu_req_vld_i;
-            req_rd_wr_reg       <= lsu_req_wr_rd_i;
-            req_addr_reg        <= lsu_req_addr_i;
-            req_st_data_reg     <= lsu_req_data_i;  
-            req_rob_idx_reg     <= lsu_req_rob_idx_i;
+            req_vld_reg         <= lsu_req_vld_reg;
+            req_rd_wr_reg       <= lsu_req_wr_rd_reg;
+            req_addr_reg        <= lsu_req_addr_reg;
+            req_st_data_reg     <= lsu_req_data_reg;  
+            req_rob_idx_reg     <= lsu_req_rob_idx_reg;
         end
     end
 
@@ -179,7 +207,6 @@ module cache_controller (
             ctrl_repair_rob_idx_reg     <= '0;
             ctrl_repair_is_store        <= '0;
             mem_resp_block_reg          <= '0;
-
         end else begin
             
             repair_state <= repair_state_next;
@@ -206,8 +233,8 @@ module cache_controller (
         req_hit = req_vld_reg && rd_tag_reg.valid && (req_tag == rd_tag_reg.tag);
         
         // if access request missed, send to MSHR
-        ld_alloc_mshr_en = req_vld_reg && !req_hit && !lsu_req_wr_rd_i;
-        st_alloc_mshr_en = req_vld_reg && !req_hit && lsu_req_wr_rd_i;        
+        ld_alloc_mshr_en = req_vld_reg && !req_hit && !req_rd_wr_reg;
+        st_alloc_mshr_en = req_vld_reg && !req_hit && req_rd_wr_reg;        
     end
 
     always_comb begin : next_repair_state
@@ -242,7 +269,6 @@ module cache_controller (
         is_repair_dirty     = '0;
 
         // extract block offset from address
-        cmt_block_offset = ctrl_repair_addr_reg[(BLOCK_OFFSET_BITS+2)-1:2];
         repair_wr_addr = ctrl_repair_addr_reg;
         repair_wr_data.data = mem_resp_block_reg;
 
@@ -253,11 +279,17 @@ module cache_controller (
                 repair_wr_data.data[(cmt_block_offset*32)+:32] = ctrl_repair_data_reg;
             end else begin
                 // repair was load, send the data to the ROB to commit the load
+                cmt_block_offset = ctrl_repair_addr_reg[BLOCK_OFFSET_BITS+1:2];
                 cmt_ld_vld_o        = 1'b1;
                 cmt_ld_data_o       = mem_resp_block_reg[(cmt_block_offset*32)+:32];  // extract the actual load data
                 cmt_rob_idx_o       = ctrl_repair_rob_idx_reg;
 
             end
+        end else begin
+            cmt_block_offset    = req_addr_reg[BLOCK_OFFSET_BITS+1:2];
+            cmt_ld_vld_o        = req_hit;
+            cmt_ld_data_o       = rd_data_reg.data[(cmt_block_offset*32)+:32];
+            cmt_rob_idx_o       = req_rob_idx_reg;
         end
     end
 

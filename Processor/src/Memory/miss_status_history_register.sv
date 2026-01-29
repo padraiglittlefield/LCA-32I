@@ -117,7 +117,6 @@ always_ff @(posedge clk_i) begin
             mshr_st[st_alloc_idx].valid_bit <= 1'b1;
             mshr_st[st_alloc_idx].addr <= st_alloc_addr_i;
             mshr_st[st_alloc_idx].data <= st_alloc_data_i;
-            mshr_st[st_alloc_idx].rob_idx <= st_alloc_rob_idx_i;
         end 
 
         if(repair_complete_i) begin   // mark repaired entries as unvalid so they can be overwritten 
