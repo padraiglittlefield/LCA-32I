@@ -3,29 +3,37 @@ module store_data_queue #(
     input   logic                               clk_i,
     input   logic                               rst_i,
     input   logic                               flush_i,
-    input   logic                               disp_vld_i,
-    input   logic   [31:0]                      store_data_i,       // whether the instr is valid
+    // Dispatch Signals (Entry Allocation)
+    input   logic                               disp_vld_i,         // whether the instr is valid
+    input   logic   [31:0]                      store_data_i,       // Store data of this instruction
+    // Committing Store from ROB
     input   logic                               cmit_vld_i,         // valid commit from rob
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   cmit_idx_i,         // index of entry holding committed instruction
-    input   logic                               exec_vld_i,
-    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   exec_sdq_idx_i,
-    input   logic   [31:0]                      exec_addr_i,
+    // AGU from Execute
+    input   logic                               exec_vld_i,         // valid address from execute
+    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   exec_sdq_idx_i,     // sdq entry to write address to
+    input   logic   [31:0]                      exec_addr_i,        // generated address
+    input   logic   [$clog2(ROB_ENTRIES)-1:0]   exec_rob_idx_i,       // rob address for store instruction
+    // SDQ Status
     output  logic   [$clog2(SDQ_ENTRIES)-1:0]   sdq_alloc_idx_o,    // index of recently allocated instr (for use as sdq_marker)
     output  logic                               sdq_full_o,         // whether the sdq is full
+    // Issuing Store Instruction
     input   logic                               issue_en_i,
     output  sdq_entry_t                         issue_entry_o,      // output entry of issuing instruction
     output  logic                               issue_vld_o,        // valid issue
-    input   logic                               ld_vld_i,
-    input   logic   [31:0]                      ld_addr_i,
-    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   ld_sdq_marker_i,
-    output  logic                               ld_hit_o,
-    output  logic   [31:0]                      ld_data_o,
-    input   logic                               clear_sdq_ent_vld_i,     
+    // Load Hit Search
+    input   logic                               ld_vld_i,           // Valid Load Instruction        
+    input   logic   [31:0]                      ld_addr_i,          // Address of load
+    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   ld_sdq_marker_i,    // "SDQ Marker" of load
+    output  logic                               ld_hit_o,           // Load Hit
+    output  logic   [31:0]                      ld_data_o,          // Data from hit
+    
+    input   logic                               clear_sdq_ent_vld_i,   // fuck why is this here??  
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   clear_sdq_ent_idx_i
 
 );
 
-localparam SDQ_DEPTH  = 1 << $clog2(SDQ_ENTRIES); // num entries rounded to the nearest base 2
+localparam SDQ_DEPTH = 1 << $clog2(SDQ_ENTRIES); // num entries rounded to the nearest base 2
 localparam PTR_WIDTH = $clog2(SDQ_DEPTH) + 1;
 localparam IDX_WIDTH = $clog2(SDQ_DEPTH);   
 
@@ -62,12 +70,13 @@ always_ff @(posedge clk_i) begin
         
         // allocate new entry upon dispatch
         if (disp_vld_i & ~full) begin
-            sdq[tail_ptr].valid <= 1'b1;
-            sdq[tail_ptr].store_data <= store_data_i;
-            sdq[tail_ptr].addr_valid <= 1'b0;
-            sdq[tail_ptr].addr <= '0;
-            sdq[tail_ptr].committed <= 1'b0;
-            sdq[tail_ptr].issued <= 1'b0;
+            sdq[tail_ptr].valid         <= 1'b1;
+            sdq[tail_ptr].store_data    <= store_data_i;
+            sdq[tail_ptr].addr_valid    <= 1'b0;
+            sdq[tail_ptr].addr          <= '0;
+            sdq[tail_ptr].committed     <= 1'b0;
+            sdq[tail_ptr].issued        <= 1'b0;
+            sdq[tail_ptr].rob_entry_idx <= '0;
             
             tail_ptr <= tail_ptr + 1; 
         end else begin
@@ -75,24 +84,25 @@ always_ff @(posedge clk_i) begin
         end
         // check if we can issue a committed store
         if(issue_en_i && (sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed)) begin
-            issue_entry_o <= sdq[head_ptr]; 
-            issue_vld_o <= sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed;
-            head_ptr <= head_ptr + 1;
+            issue_entry_o   <= sdq[head_ptr]; 
+            issue_vld_o     <= sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed;
+            head_ptr        <= head_ptr + 1;
         end else begin
-            issue_entry_o <= '0;
-            issue_vld_o <= '0;
-            head_ptr <= head_ptr;
+            issue_entry_o   <= '0;
+            issue_vld_o     <= '0;
+            head_ptr        <= head_ptr;
         end
 
         //
         if(cmit_vld_i) begin
-            sdq[cmit_idx_i].committed <= 1'b1;
-            last_cmit_idx_reg <= cmit_idx_i; 
+            sdq[cmit_idx_i].committed   <= 1'b1;
+            last_cmit_idx_reg           <= cmit_idx_i; 
         end
 
         if(exec_vld_i) begin
-            sdq[exec_sdq_idx_i].addr_valid <= 1'b1;
-            sdq[exec_sdq_idx_i].addr <= exec_addr_i;
+            sdq[exec_sdq_idx_i].addr_valid      <= 1'b1;
+            sdq[exec_sdq_idx_i].addr            <= exec_addr_i;
+            sdq[exec_sdq_idx_i].rob_entry_idx   <= exec_rob_idx_i;
         end 
     end
 end

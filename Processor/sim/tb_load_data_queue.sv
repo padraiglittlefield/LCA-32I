@@ -47,8 +47,8 @@ module tb_load_data_queue;
     logic issue_en_i;
     ldq_entry_t issue_entry_o;
     logic issue_vld_o;
-
-
+    logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx;
+    
     load_data_queue dut (
         .clk_i(clk),
         .rst_i(rst),
@@ -60,6 +60,7 @@ module tb_load_data_queue;
         .exec_vld_i(exec_vld_i),
         .exec_ldq_idx_i(exec_ldq_idx_i),
         .exec_addr_i(exec_addr_i),
+        .exec_rob_idx_i(rob_entry_idx),
         .issue_en_i(issue_en_i),   // can we issue a load
         .issue_entry_o(issue_entry_o),
         .issue_vld_o(issue_vld_o)
@@ -76,6 +77,7 @@ module tb_load_data_queue;
             exec_vld_i = 0;
             exec_ldq_idx_i = 0;
             exec_addr_i = 0;
+            rob_entry_idx = 0;
         end
     endtask
 

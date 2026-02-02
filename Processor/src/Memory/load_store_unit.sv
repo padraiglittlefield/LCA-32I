@@ -22,12 +22,13 @@ module load_store_unit (
         .rst_i(rst_i),
         .flush_i(flush_i),
         .disp_vld_i(),
-        .disp_dsq_marker_i(),
+        .disp_sdq_marker_i(),
         .ldq_disp_idx_o(),
         .ldq_full_o(),
         .exec_vld_i(),
         .exec_ldq_idx_i(),
         .exec_addr_i(),
+        .exec_rob_idx_i(),
         .issue_en_i(),
         .issue_entry_o(),
         .issue_vld_o()
@@ -43,6 +44,7 @@ module load_store_unit (
         .cmit_idx_i(),
         .exec_vld_i(),
         .exec_addr_i(),
+        .exec_rob_idx_i(),
         .sdq_alloc_idx_o(),
         .sdq_full_o(),
         .issue_en_i(),
@@ -76,9 +78,5 @@ module load_store_unit (
     .stall_controller_o()
 );  
 
-
-// main_memory_interface u_mmu ( // Going to move this to Chip Top instead of inside the PIPELINE
-
-// );
 
 endmodule

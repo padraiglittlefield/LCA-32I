@@ -53,7 +53,7 @@ module tb_store_data_queue;
     logic   [$clog2(SDQ_ENTRIES)-1:0]   ld_sdq_marker_i;
     logic                               ld_hit_o;
     logic   [31:0]                      ld_data_o;
-
+    logic [$clog2(ROB_ENTRIES)-1:0] exec_rob_idx_i;
 
     store_data_queue dut (
         .clk_i(clk),
@@ -66,6 +66,7 @@ module tb_store_data_queue;
         .exec_vld_i(exec_vld_i),
         .exec_sdq_idx_i(exec_sdq_idx_i),
         .exec_addr_i(exec_addr_i),
+        .exec_rob_idx_i(exec_rob_idx_i),
         .sdq_alloc_idx_o(sdq_alloc_idx_o),  
         .sdq_full_o(sdq_full_o),       
         .issue_entry_o(issue_entry_o),
@@ -94,6 +95,7 @@ module tb_store_data_queue;
             ld_vld_i = 0;
             ld_addr_i = 0;
             ld_sdq_marker_i = 0;
+            exec_rob_idx_i = 0;
         end
     endtask
 

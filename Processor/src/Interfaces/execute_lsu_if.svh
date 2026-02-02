@@ -1,20 +1,20 @@
-`ifndef EXEC_LSU_IF
-`define EXEC_LSU_IF
-/*
-    Send Calculated Address to the LSU, specifically to the entries in the LDQ and SDQ
+// `ifndef EXEC_LSU_IF
+// `define EXEC_LSU_IF
+// /*
+//     Send Calculated Address to the LSU, specifically to the entries in the LDQ and SDQ
 
-*/
-interface execute_lsu_if;
+// */
+// interface execute_lsu_if;
 
-import CORE_PKG::*;
+// import CORE_PKG::*;
 
-modport execute (
+// modport execute (
 
-);
+// );
 
-modport lsu (
+// modport lsu (
 
-);
+// );
 
-endinterface
-`endif
+// endinterface
+// `endif

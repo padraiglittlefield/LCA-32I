@@ -2,13 +2,17 @@ module load_data_queue (
     input   logic                                       clk_i,              // clock
     input   logic                                       rst_i,              // reset
     input   logic                                       flush_i,            // flush
+
     input   logic                                       disp_vld_i,         // is dispatch valid
     input   logic           [$clog2(SDQ_ENTRIES):0]     disp_sdq_marker_i,  // "SDQ Marker" for this entry (basically tracks relative order between stores)
     output  logic           [$clog2(LDQ_ENTRIES)-1:0]   ldq_disp_idx_o,     // index of recently allocated entry
     output  logic                                       ldq_full_o,         // is ldq full
+    
     input   logic                                       exec_vld_i,         // is execute valid?
     input   logic           [$clog2(LDQ_ENTRIES)-1:0]   exec_ldq_idx_i,     // ldq entry to update
     input   logic           [31:0]                      exec_addr_i,        // updated address from execute
+    input   logic           [$clog2(ROB_ENTRIES)-1:0]   exec_rob_idx_i,     // RoB idx for this instr
+    
     input   logic                                       issue_en_i,         // can we issue a load?
     output  ldq_entry_t                                 issue_entry_o,      // load entry out
     output  logic                                       issue_vld_o         // issue valid
@@ -31,8 +35,9 @@ always_ff @(posedge clk_i) begin
         end
 
          if(exec_vld_i) begin
-            ldq[exec_ldq_idx_i].addr <= exec_addr_i;
-            ldq[exec_ldq_idx_i].addr_valid <= 1'b1;
+            ldq[exec_ldq_idx_i].addr            <= exec_addr_i;
+            ldq[exec_ldq_idx_i].addr_valid      <= 1'b1;
+            ldq[exec_ldq_idx_i].rob_entry_idx   <= exec_rob_idx_i;
         end
     end
 end
@@ -71,7 +76,7 @@ always_comb begin
     ldq_alloc_entry.addr = '0;
     ldq_alloc_entry.sdq_marker = disp_sdq_marker_i;
     ldq_alloc_entry.issued = '0; // not sure if this is really needed. Currently we just delete it after firing
-
+    ldq_alloc_entry.rob_entry_idx = '0;
     ldq_disp_idx_o = !ldq_full_o ? ldq_alloc_idx : '0;
 end
 
