@@ -14,6 +14,7 @@ module load_data_queue (
     input   logic           [$clog2(ROB_ENTRIES)-1:0]   exec_rob_idx_i,     // RoB idx for this instr
     
     input   logic                                       issue_en_i,         // can we issue a load?
+    input   logic                                       issue_ack_i,
     output  ldq_entry_t                                 issue_entry_o,      // load entry out
     output  logic                                       issue_vld_o         // issue valid
 
@@ -38,6 +39,10 @@ always_ff @(posedge clk_i) begin
             ldq[exec_ldq_idx_i].addr            <= exec_addr_i;
             ldq[exec_ldq_idx_i].addr_valid      <= 1'b1;
             ldq[exec_ldq_idx_i].rob_entry_idx   <= exec_rob_idx_i;
+        end
+
+        if (issue_vld_o && issue_ack_i) begin  // whenever we issue an entry, clear it from the ldq
+            ldq[issue_idx].valid <= 1'b0;
         end
     end
 end
@@ -105,9 +110,4 @@ always_comb begin
     end
 end
 
-always_ff @(posedge clk_i) begin
-    if (!rst_i && issue_vld_o && issue_en_i) begin  // whenever we issue an entry, clear it from the ldq
-        ldq[issue_idx].valid <= 1'b0;
-    end
-end
 endmodule

@@ -19,17 +19,20 @@ module store_data_queue #(
     output  logic                               sdq_full_o,         // whether the sdq is full
     // Issuing Store Instruction
     input   logic                               issue_en_i,
+    input   logic                               issue_ack_i,
     output  sdq_entry_t                         issue_entry_o,      // output entry of issuing instruction
     output  logic                               issue_vld_o,        // valid issue
+
     // Load Hit Search
     input   logic                               ld_vld_i,           // Valid Load Instruction        
     input   logic   [31:0]                      ld_addr_i,          // Address of load
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   ld_sdq_marker_i,    // "SDQ Marker" of load
     output  logic                               ld_hit_o,           // Load Hit
     output  logic   [31:0]                      ld_data_o,          // Data from hit
-    
-    input   logic                               clear_sdq_ent_vld_i,   // fuck why is this here??  
-    input   logic   [$clog2(SDQ_ENTRIES)-1:0]   clear_sdq_ent_idx_i
+    output  logic                               ld_ambig_stall_o,   // signals that there is an unresolved address in an older store and we need to stall  
+
+    // input   logic                               clear_sdq_ent_vld_i,   // fuck why is this here??  
+    // input   logic   [$clog2(SDQ_ENTRIES)-1:0]   clear_sdq_ent_idx_i
 
 );
 
@@ -41,6 +44,7 @@ sdq_entry_t sdq [0:SDQ_DEPTH];
 logic full;
 logic [PTR_WIDTH-1:0] head_ptr;
 logic [PTR_WIDTH-1:0] tail_ptr;
+
 
  // register storing the last committed instruction in the event of a flush and we need to remove uncommitted entries
 logic [$clog2(SDQ_ENTRIES)-1:0] last_cmit_idx_reg;
@@ -82,15 +86,10 @@ always_ff @(posedge clk_i) begin
         end else begin
             tail_ptr <= tail_ptr;
         end
-        // check if we can issue a committed store
-        if(issue_en_i && (sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed)) begin
-            issue_entry_o   <= sdq[head_ptr]; 
-            issue_vld_o     <= sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed;
-            head_ptr        <= head_ptr + 1;
-        end else begin
-            issue_entry_o   <= '0;
-            issue_vld_o     <= '0;
-            head_ptr        <= head_ptr;
+
+        // was our sdq issue acknowledged, if so move head pointer
+        if (issue_ack_i) begin
+            head_ptr <= head_ptr + 1;
         end
 
         //
@@ -107,11 +106,36 @@ always_ff @(posedge clk_i) begin
     end
 end
 
+always_comb begin
+    issue_vld_o   = issue_en_i & sdq[head_ptr].valid & sdq[head_ptr].addr_valid & sdq[head_ptr].committed;
+    issue_entry_o = issue_vld_o ? sdq[head_ptr] : '0;
+end
+
 assign sdq_alloc_idx_o = tail_ptr[IDX_WIDTH-1:0];
 assign full = (head_ptr[IDX_WIDTH] != tail_ptr[IDX_WIDTH]) && (head_ptr[IDX_WIDTH-1:0] == tail_ptr[IDX_WIDTH-1:0]);
 assign sdq_full_o = full;
 
+// ============= Load Forwarding ============= //
 
+
+// check for memory disambiguity
+
+logic prev_st_addr_unresolved;
+
+assign ld_ambig_stall_o = prev_st_addr_unresolved;
+
+always_comb begin
+    prev_st_addr_unresolved = 1'b0;
+
+    if (ld_vld_i) begin
+        for (int i = 0; i < SDQ_ENTRIES; i++) begin
+            if (ld_sdq_marker_i > i && sdq[i].valid && !sdq[i].addr_valid)
+                prev_st_addr_unresolved = 1'b1;
+        end
+    end
+end
+
+// forward value from sdq
 always_comb begin
     ld_hit_o = 1'b0;
     ld_data_o = '0;

@@ -269,7 +269,7 @@ module cache_controller (
         cmt_block_offset    = '0;
         cmt_ld_data_o       = '0;
         cmt_rob_idx_o       = '0;
-        is_repair_dirty     = '0;
+        // is_repair_dirty     = '0;
 
         // extract block offset from address
         repair_wr_addr = ctrl_repair_addr_reg;
@@ -278,7 +278,7 @@ module cache_controller (
         if(ctrl_repair_complete) begin
             if(ctrl_repair_is_store) begin 
                 // repair was store, update data to be written to the cache
-                is_repair_dirty = 1'b1;
+                // is_repair_dirty = 1'b1;
                 repair_wr_data.data[(cmt_block_offset*32)+:32] = ctrl_repair_data_reg;
             end else begin
                 // repair was load, send the data to the ROB to commit the load
