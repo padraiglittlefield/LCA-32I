@@ -5,6 +5,7 @@ module dispatch (
     
     input   logic           [FIRE_WIDTH-1:0]            rename_vld_i,
     input   rename_packet_t [FIRE_WIDTH-1:0]            rename_disp_pkt_i,
+    output  logic                                       instr_queue_full_o,
     
     dispatch_scheduler_if.dispatch                      disp_sched_if[NUM_FUS],
     dispatch_reorder_buffer_if.dispatch                 disp_rob_if[FIRE_WIDTH],
@@ -24,33 +25,73 @@ module dispatch (
 
     logic [$clog2(FIRE_WIDTH)-1:0] dispatch_stall; 
 
-    always_ff @(posedge clk) begin
-        if(rst) begin
+  
+    logic [FIRE_WIDTH-1:0] instr_vld;
+    rename_packet_t [FIRE_WIDTH-1:0] instr_pkt;
 
-        end else begin
-            des
-        end
-    end
-
-    always_comb begin
-        for(int i = 0; i<FIRE_WIDTH;i++) begin
+    //TODO: Connect Rename to the front of the queue
 
 
-        end
-    end
-
-    
     instruction_queue u_instr_queue (
         .clk(clk),
         .rst(rst),
         .flush(flush),
         .rename_vld_i(),
         .rename_pkt_i(),
-        .full(),
-        .dispatch_en_i(),
-        .instr_vld_o(),
-        .instr_pkt_o()
+        .full(instr_queue_full_o),
+        .dispatch_en_i(assignment_vld),
+        .instr_vld_o(instr_vld),
+        .instr_pkt_o(instr_pkt)
     );
+
+
+    fu_type_e required_fu [0:FIRE_WIDTH-1];
+    logic [NUM_FUS-1:0] pipe_free;  // marked by rs_full, makes sure that the pipe can actually accept new entries
+    logic [$clog2(NUM_FUS)-1:0] assigned_pipe [0:FIRE_WIDTH-1];
+    logic assignment_vld [0:FIRE_WIDTH-1];
+    logic [NUM_FUS-1:0] pipe_claimed [0:FIRE_WIDTH-1];
+
+
+    always_comb begin : pipe_steering
+        pipe_claimed[0] = '0;
+        for (int i = 0; i < FIRE_WIDTH; i++) begin        
+            assigned_pipe[i] = '0;
+            assignment_valid[i] = 1'b0;
+            required_fu[i] = instr_pkt[i].required_fu;
+            pipe_free[i] = ~disp_sched_if[i].rs_full;
+
+            if (i == 0 || assignment_valid[i-1]) begin  // only try if prev slot succeeded
+                for (int j = 0; j < NUM_FUS; j++) begin
+                    if (instr_vld[i] && FU_TYPE[j] == required_fu[i] && pipe_free[j] && !pipe_claimed[i][j] && !assignment_valid[i]) begin
+                        assigned_pipe[i] = j;
+                        assignment_valid[i] = 1'b1;
+                    end
+                end
+            end
+            pipe_claimed[i+1] = pipe_claimed[i] | (assignment_vld[i] ? NUM_FUS'(1 << assigned_pipe[i]) : '0);
+        end
+    end
+
+    // TODO: Create Dependency Mapped Access Table (DMAT) to track instruction dependencies
+    // TODO: Create Disp Packet for each instruction
+    // TODO: Send correct disp packet to the correct pipe, do special case for memory (agu)
+
+
+    // always_ff @(posedge clk) begin
+    //     if(rst) begin
+
+    //     end else begin
+    //         des
+    //     end
+    // end
+
+    // always_comb begin
+    //     for(int i = 0; i<FIRE_WIDTH;i++) begin
+
+
+    //     end
+    // end
+
 
 
 endmodule

@@ -7,7 +7,7 @@ module instruction_queue #(
     input logic [RENAME_WIDTH-1:0] rename_vld_i,
     input rename_packet_t [RENAME_WIDTH-1:0] rename_pkt_i,
     output logic [RENAME_WIDTH-1:0] full,
-    input logic [RENAME_WIDTH-1:0] dispatch_en_i,
+    input logic [FIRE_WIDTH-1:0] dispatch_en_i,
     output logic [FIRE_WIDTH-1:0] instr_vld_o,
     output rename_packet_t [FIRE_WIDTH-1:0] instr_pkt_o
 

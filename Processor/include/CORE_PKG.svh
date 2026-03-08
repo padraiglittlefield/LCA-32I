@@ -59,6 +59,7 @@ typedef enum {
 
 typedef struct packed {
     instr_opcode opcode;
+    fu_type_e required_fu;
     logic [$clog2(NUM_AREGS)-1:0] dst_areg;
     logic [$clog2(NUM_PREGS)-1:0] dst_preg;
     logic [$clog2(NUM_PREGS)-1:0] src1_preg;
@@ -69,6 +70,16 @@ typedef struct packed {
     logic alu_en;
     logic br_taken;
 } rename_packet_t;
+
+
+typedef enum logic [1:0] {
+    FU_ALU,
+    FU_AGU
+    // FU_MUL 
+} fu_type_e;
+
+parameter fu_type_e FU_TYPE [NUM_FUS] = '{FU_ALU, FU_ALU, FU_ALU, FU_AGU};
+
 
 typedef struct packed {
     instr_opcode opcode;
