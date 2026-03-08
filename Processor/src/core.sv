@@ -3,13 +3,14 @@ module core (
     input rst
 );
 
+import CORE_PKG::*;
 
 // ==================== Interfaces ==================== //
 
 dispatch_scheduler_if           disp_sched_if[NUM_FUS]();
 execute_scheduler_if            exec_sched_if[NUM_FUS]();
 scheduler_reg_read_if           sched_reg_read_if[NUM_FUS]();
-reg_read_reg_file_if       reg_read_reg_file_if[NUM_FUS]();
+reg_read_reg_file_if            reg_read_reg_file_if[NUM_FUS]();
 fwrd_reg_read_if                reg_read_fwrd_if[NUM_FUS]();
 reg_read_execute_if             reg_read_if_exec_if[NUM_FUS]();
 execute_fwrd_if                 exec_fwrd_if[NUM_FUS]();
@@ -19,7 +20,26 @@ execute_reorder_buffer_if       exec_rob_if[(NUM_FUS-1)]();
 arch_reg_file_reorder_buffer_if arch_reg_file_rob_if[RETIRE_WIDTH]();
 reorder_buffer_flush_unit_if    rob_flush_if();
 
-// ==================================================== //
+// ==================== Signal Declaration ====================== //
+
+logic                            agu_vld;
+logic                            agu_is_store;
+logic [31:0]                     agu_addr;
+logic [31:0]                     agu_store_data;
+logic [$clog2(ROB_ENTRIES)-1:0]  agu_rob_idx;
+logic [$clog2(LDQ_ENTRIES)-1:0]  agu_ldq_idx;
+logic [$clog2(SDQ_ENTRIES)-1:0]  agu_sdq_idx;
+
+genvar j;
+generate 
+    for(j = 0; j<FRONTEND_WIDTH; j++) begin : Frontend
+
+    end
+endgenerate
+
+
+
+
 
 logic [RS_ENTRIES-1:0] local_ready_mask [0:NUM_FUS-1];
 logic [(RS_ENTRIES * NUM_FUS)-1:0] global_ready_mask;
@@ -69,7 +89,14 @@ generate
             execute_agu u_execute_alu (
                 .clk(clk),
                 .rst(rst),
-                .reg_read_if(reg_read_if_exec_if[i].execute)
+                .reg_read_if(reg_read_if_exec_if[i].execute),
+                .lsu_vld_o(agu_vld)
+                .lsu_is_store_o(agu_is_store)
+                .lsu_addr_o(agu_addr)
+                .lsu_store_data_o(agu_store_data)
+                .lsu_rob_idx_o(agu_rob_idx)
+                .lsu_ldq_idx_o(agu_ldq_idx)
+                .lsu_sdq_idx_o(agu_sdq_idx)
             );
 
         end
@@ -99,5 +126,42 @@ register_file u_register_file (
     .reg_read_if(reg_read_reg_file_if.phys_reg_file),
     .exec_if(exec_reg_file_if.phys_reg_file)
 );
+
+load_store_unit u_load_store_unit (
+    .clk_i(), 
+    .rst_i(),
+    .flush_i(),
+    .disp_vld_i(),
+    .disp_is_store_i(),
+    .disp_store_data_i(),
+    .disp_sdq_marker_i(), 
+    .disp_rob_idx_i(),
+    .disp_ldq_idx_o(), 
+    .disp_sdq_idx_o(),
+    .ldq_full_o(),
+    .sdq_full_o(),
+    .agu_vld_i(agu_vld),
+    .agu_is_store_i(agu_is_store),
+    .agu_addr_i(agu_addr),
+    .agu_store_data_i(agu_store_data),
+    .agu_rob_idx_i(agu_rob_idx),
+    .agu_ldq_idx_i(agu_ldq_idx),
+    .agu_sdq_idx_i(agu_sdq_idx),
+    .rob_store_cmit_vld_i(),
+    .rob_store_cmit_idx_i(),
+    .ld_cmt_vld_o(),       
+    .ld_cmt_data_o(),
+    .ld_cmt_rob_idx_o(),
+    .mem_req_vld_o(),
+    .mem_req_addr_o(),
+    .mem_resp_vld_i(),
+    .mem_resp_data_i(),
+    .mem_wb_data_o(),
+    .mem_wb_vld_o()
+
+
+);
+
+
 
 endmodule

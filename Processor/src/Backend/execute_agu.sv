@@ -2,7 +2,6 @@ module execute_agu (
     input   logic   clk,
     input   logic   rst,
     reg_read_execute_if.execute reg_read_if,
-    //TODO: Connect to LSU
     output  logic                            lsu_vld_o,
     output  logic                            lsu_is_store_o,
     output  logic [31:0]                     lsu_addr_o,

@@ -16,7 +16,7 @@ module RAT(
     for(k = 0; k < RENAME_WIDTH; k++) begin
       always@(posedge clk) begin
         if(rst) begin
-          for ( i = 0; i < NUM_AREGS; i++) begin
+          for (int i = 0; i < NUM_AREGS; i++) begin
             register_alias_table[i] <= i;
           end
         end else if(RenameIF.w_en[k]) begin 

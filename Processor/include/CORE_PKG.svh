@@ -10,6 +10,7 @@ parameter NUM_AREGS = 32;
 
 parameter RS_ENTRIES = 4;
 parameter NUM_FUS = 4;
+parameter FRONTEND_WIDTH=2;
 
 parameter ROB_ENTRIES = 16;
 
@@ -55,6 +56,19 @@ typedef enum {
     CSR,    
     INVALID
 } instr_opcode;
+
+typedef struct packed {
+    instr_opcode opcode;
+    logic [$clog2(NUM_AREGS)-1:0] dst_areg;
+    logic [$clog2(NUM_PREGS)-1:0] dst_preg;
+    logic [$clog2(NUM_PREGS)-1:0] src1_preg;
+    logic [$clog2(NUM_PREGS)-1:0] src2_preg;
+    logic [31:0] imm_val;
+    logic instr_valid;
+    logic [31:0] pc;
+    logic alu_en;
+    logic br_taken;
+} rename_packet_t;
 
 typedef struct packed {
     instr_opcode opcode;
