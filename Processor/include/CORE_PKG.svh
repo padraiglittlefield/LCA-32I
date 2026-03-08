@@ -51,9 +51,9 @@ typedef enum {
     BGE,    
     BLTU,   
     BGEU,   
-    CSRR,   
-    CSRW,   
-    CSR,    
+    // CSRR,   
+    // CSRW,   
+    // CSR,    
     INVALID
 } instr_opcode;
 

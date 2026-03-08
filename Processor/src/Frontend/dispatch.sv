@@ -34,8 +34,23 @@ module dispatch (
 
     always_comb begin
         for(int i = 0; i<FIRE_WIDTH;i++) begin
-            
+
 
         end
     end
+
+    
+    instruction_queue u_instr_queue (
+        .clk(clk),
+        .rst(rst),
+        .flush(flush),
+        .rename_vld_i(),
+        .rename_pkt_i(),
+        .full(),
+        .dispatch_en_i(),
+        .instr_vld_o(),
+        .instr_pkt_o()
+    );
+
+
 endmodule
