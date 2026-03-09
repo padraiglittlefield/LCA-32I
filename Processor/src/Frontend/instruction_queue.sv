@@ -60,14 +60,14 @@ logic [PTR_WIDTH-1:0] dispatch_idx [0:FIRE_WIDTH-1];
 always_comb begin
     num_dispatched = '0;
     for(int i = 0; i<FIRE_WIDTH; i++) begin
-        dispatch_idx = (head_ptr + PTR_WIDTH'(i));
+        dispatch_idx[i] = (head_ptr + PTR_WIDTH'(i))[PTR_WIDTH-1:0];
         if(i == 0) begin
            dispatch_en[i] = dispatch_en_i[i];
         end else begin
            dispatch_en[i] = dispatch_en_i[i-1] && dispatch_en_i[i]; // technically if i do disptach correctly this check isnt needed TODO maybe
         end
         
-        // count the number of entries added in order to know how many to progress the tail ptr by
+        // count the number of entries dispatched in order to know how many to progress the head ptr by
         if(dispatch_en[i]) begin
             num_dispatched = num_dispatched + $bits(num_dispatched)'(1); 
         end
@@ -77,8 +77,8 @@ end
 // Expose to first FIRE_WIDTH instructions to the dispatch logic for decideding which it can dispatch
 always_comb begin
     for(int i = 0; i<FIRE_WIDTH; i++) begin
-        instr_pkt_o[i] = queue[dispatch_idx[i][PTR_WIDTH-1:0]];
-        instr_vld_o[i] = queue[dispatch_idx[i][PTR_WIDTH-1:0]].instr_valid;
+        instr_pkt_o[i] = queue[dispatch_idx[i]];
+        instr_vld_o[i] = queue[dispatch_idx[i]].instr_valid;
     end
 end
 
