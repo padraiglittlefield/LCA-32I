@@ -2,7 +2,7 @@
     Free List for Tracking PREG Use
 */
 module free_list #(
-    parameter DEPTH = NUM_PREGS
+    parameter DEPTH = (NUM_PREGS - NUM_AREGS)
 )(
     input logic clk,
     input logic rst,
@@ -87,7 +87,7 @@ always_ff @(posedge clk) begin
         
         // clear instr free_list
         for (int i = 0; i < DEPTH; i++) begin
-            free_list[i] <= i;
+            free_list[i] <= i + NUM_AREGS;
         end
         
     end else begin

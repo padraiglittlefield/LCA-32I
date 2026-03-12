@@ -5,6 +5,8 @@
 
 package CORE_PKG;
 
+parameter DECODE_WIDTH = 2;
+
 parameter NUM_PREGS = 64;
 parameter NUM_AREGS = 32;
 
@@ -56,6 +58,21 @@ typedef enum {
     // CSR,    
     INVALID
 } instr_opcode;
+
+
+typedef struct packed {
+    instr_opcode opcode;
+    fu_type_e required_fu;
+    logic reg_wr;
+    logic [$clog2(NUM_AREGS)-1:0] dst_areg;
+    logic [$clog2(NUM_PREGS)-1:0] src1_areg;
+    logic [$clog2(NUM_PREGS)-1:0] src2_areg;
+    logic [31:0] imm_val;
+    logic instr_valid;
+    logic [31:0] pc;
+    logic alu_en;
+    logic br_taken;
+} decode_packet_t;
 
 typedef struct packed {
     instr_opcode opcode;

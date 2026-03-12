@@ -3,8 +3,8 @@ module dispatch (
     input   logic                                       rst,
     input   logic                                       stall_i,
     
-    input   logic           [FIRE_WIDTH-1:0]            rename_vld_i,
-    input   rename_packet_t [FIRE_WIDTH-1:0]            rename_disp_pkt_i,
+    input   logic           [FIRE_WIDTH-1:0]            rename_vld_i [0:FIRE_WIDTH-1],
+    input   rename_packet_t rename_disp_pkt_i [0:FIRE_WIDTH-1],
     output  logic                                       instr_queue_full_o,
     
     dispatch_scheduler_if.dispatch                      disp_sched_if[NUM_FUS],
