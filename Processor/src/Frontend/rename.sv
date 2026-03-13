@@ -9,9 +9,9 @@ module rename (
     input decode_packet_t [DECODE_WIDTH-1:0] decode_pkt_i,
 
     // -> Dispatch
-    input logic [RENAME_WIDTH-1:0]  disp_queue_full_i,  // Can we send instructions to dispatch or shall we stall
-    output logic [RENAME_WIDTH-1:0] rename_vld_i,
-    output rename_packet_t [RENAME_WIDTH-1:0] rename_disp_pkt_i,
+    input logic [RENAME_WIDTH-1:0]  disp_queue_full_i,  // Can we send instructions to dispatch or shall we stall_i
+    output logic [RENAME_WIDTH-1:0] rename_vld_o,
+    output rename_packet_t [RENAME_WIDTH-1:0] rename_disp_pkt_o,
 
     // Reorder Buffer -> (Adds entries to the Free List)
     input logic free_vld_i [RETIRE_WIDTH],
@@ -22,22 +22,24 @@ module rename (
 
 // logic stall_rename;
 
-// assign stall_rename = stall_i | disp_queue_full_i; // Stall rename if there is system stall or if the dispatch queue is full
+// assign stall_rename = stall_i | disp_queue_full_i; // Stall rename if there is system stall_i or if the dispatch queue is full
 
-logic free_list_empty;
+
+// NOTE: Decode and Rename Width must be the same in the processor architecture
+logic free_list_empty [0:DECODE_WIDTH-1];;
 logic free_list_r_en [0:DECODE_WIDTH-1];
 logic [$clog2(NUM_PREGS)-1:0] free_preg [0:DECODE_WIDTH-1];
 
 always_comb begin
     for(int i =0;i<DECODE_WIDTH;i++) begin
-        free_list_r_en[i] = (decode_pkt_vld_i[i] && decode_pkt_i[i].reg_wr) && !disp_queue_full_i[i]; //&&!stall // only read free_list entries when theres a valid instruction and the rename stage isnt stalled
+        free_list_r_en[i] = (decode_pkt_vld_i[i] && decode_pkt_i[i].reg_wr) && !disp_queue_full_i[i]; //&&!stall_i // only read free_list entries when theres a valid instruction and the rename stage isnt stalled
     end
 end
 
 free_list u_free_list (
-    .clk(clk),
-    .rst(rst),
-    .flush(flush),
+    .clk_i(clk_i),
+    .rst_i(rst_i),
+    .flush_i(flush_i),
     .r_en(free_list_r_en),
     .free_preg_o(free_preg),
     .w_en(free_vld_i),
@@ -45,7 +47,7 @@ free_list u_free_list (
     .empty(free_list_empty)
 );
 
-logic alias_w_en [0:DECODE_WIDTH-1];
+logic alias_w_en [0:RENAME_WIDTH-1];
 logic [$clog2(NUM_AREGS)-1:0] dst_areg [0:RENAME_WIDTH-1];
 logic [$clog2(NUM_AREGS)-1:0] src1_areg [0:RENAME_WIDTH-1];
 logic [$clog2(NUM_PREGS)-1:0] src1_alias [0:RENAME_WIDTH-1];
@@ -64,9 +66,9 @@ always_comb begin
 end
 
 RAT u_rat (
-    .clk(clk),
-    .rst(rst),
-    .flush(flush),
+    .clk_i(clk_i),
+    .rst_i(rst_i),
+    .flush_i(flush_i),
     .rd_areg_src1_i(src1_areg),
     .rd_alias_src1_o(src1_alias),
     .rd_areg_src2_i(src2_areg),
@@ -92,23 +94,23 @@ always_comb begin
         next_rename_pkt[i].br_taken     = decode_pkt_i[i].br_taken;
         
         // New from Rename
-        next_rename_pkt[i].dst_preg     = decode_pkt_i[i];
-        next_rename_pkt[i].src1_preg    = decode_pkt_i[i];
-        next_rename_pkt[i].src2_preg    = decode_pkt_i[i];
+        next_rename_pkt[i].dst_preg  = free_preg[i];
+        next_rename_pkt[i].src1_preg = src1_alias[i];
+        next_rename_pkt[i].src2_preg = src2_alias[i];
     end
 end
 
-always_ff @( posedge clk ) begin : rename_dispatch_pipeline_register
-    if(rst || flush) begin
-        rename_vld_i <= '0;
-        rename_disp_pkt_i <= '0;
-    end else if(stall) begin
-        rename_vld_i <= rename_vld_i;
-        rename_disp_pkt_i <= rename_disp_pkt_i;
+always_ff @( posedge clk_i ) begin : rename_dispatch_pipeline_register
+    if(rst_i || flush_i) begin
+        rename_vld_o <= '0;
+        rename_disp_pkt_o <= '0;
+    end else if(stall_i) begin
+        rename_vld_o <= rename_vld_o;
+        rename_disp_pkt_o <= rename_disp_pkt_o;
     end else begin
         for(int i=0; i<RENAME_WIDTH;i++) begin
-            rename_vld_i[i] <=;
-
+            rename_vld_o[i] <= alias_w_en[i];
+            rename_disp_pkt_o[i] <= next_rename_pkt[i];
         end
     end
 end

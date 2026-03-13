@@ -20,7 +20,7 @@ module RAT(
 
 
 typedef struct packed {
-  logic [$clog2(NUM_PREGS)-1:0] preg_alias,
+  logic [$clog2(NUM_PREGS)-1:0] preg_alias
   // logic alias_vld;
 } rat_entry_t;
 
@@ -46,14 +46,17 @@ end
 always_comb begin
   for(int i = 0; i<RENAME_WIDTH;i++) begin
     // rd_alias_vld_o[i] = register_alias_table[rd_areg_i[i]].alias_vld;
-    rd_alias_o[i] = register_alias_table[rd_areg_i[i]].preg_alias;
+    rd_alias_src1_o[i] = register_alias_table[rd_areg_src1_i[i]].preg_alias;
+    rd_alias_src2_o[i] = register_alias_table[rd_areg_src2_i[i]].preg_alias;
 
 
     // Bypass new Mappings from earlier entries
     for (int j = 0; j < i; j++) begin
-        if (w_en[j] && w_dst_areg_i[j] == rd_areg_i[i]) begin
-            rd_alias_o[i]     = w_new_alias_i[j];
-            // rd_alias_vld_o[i] = 1'b1;
+        if (w_en[j] && w_dst_areg_i[j] == rd_areg_src1_i[i]) begin
+            rd_alias_src1_o[i]     = w_new_alias_i[j];
+        end
+        if (w_en[j] && w_dst_areg_i[j] == rd_areg_src2_i[i]) begin
+            rd_alias_src2_o[i]     = w_new_alias_i[j];
         end
     end
   end
