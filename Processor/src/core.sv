@@ -30,19 +30,16 @@ logic [$clog2(ROB_ENTRIES)-1:0]  agu_rob_idx;
 logic [$clog2(LDQ_ENTRIES)-1:0]  agu_ldq_idx;
 logic [$clog2(SDQ_ENTRIES)-1:0]  agu_sdq_idx;
 
-genvar j;
-generate 
-    for(j = 0; j<FRONTEND_WIDTH; j++) begin : Frontend
-
-    end
-endgenerate
-
-
-
-
-
 logic [RS_ENTRIES-1:0] local_ready_mask [0:NUM_FUS-1];
 logic [(RS_ENTRIES * NUM_FUS)-1:0] global_ready_mask;
+
+
+
+
+// ==================== Module Declaration ====================== //
+
+
+
 
 genvar i;
 generate 

@@ -1,7 +1,8 @@
 module dispatch (
-    input   logic                                       clk,
-    input   logic                                       rst,
+    input   logic                                       clk_i,
+    input   logic                                       rst_i,
     input   logic                                       stall_i,
+    input   logic                                       flush_i,
     
     input   logic           [FIRE_WIDTH-1:0]            rename_vld_i,
     input   rename_packet_t [FIRE_WIDTH-1:0]            rename_disp_pkt_i,
@@ -23,16 +24,16 @@ module dispatch (
 
 );
 
-    logic [$clog2(FIRE_WIDTH)-1:0] dispatch_stall; 
+    logic [$clog2(FIRE_WIDTH)-1:0] dispatch_stall;
 
   
     logic [FIRE_WIDTH-1:0] instr_vld;
     rename_packet_t [FIRE_WIDTH-1:0] instr_pkt;
 
     instruction_queue u_instr_queue (
-        .clk(clk),
-        .rst(rst),
-        .flush(flush),
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .flush(flush_i),
         .rename_vld_i(rename_vld_i & ~instr_queue_full_o), // in theory rename wont send but just in case
         .rename_pkt_i(rename_disp_pkt_i),
         .full(instr_queue_full_o),
@@ -69,13 +70,26 @@ module dispatch (
         end
     end
 
-    // TODO: Create Dependency Mapped Access Table (DMAT) to track instruction dependencies
+
+    dependency_mapping_table u_dmt (
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .flush_i(flush_i),
+        .fire_vld_i(),
+        .dst_preg_i(),
+        .fire_loc_i(),
+        .src1_preg_i(),
+        .src2_preg_i(),
+        .dependency_mask_o(),
+        .exec_vld_i(),
+        .exec_dst_preg_i()     
+    );
+
     // TODO: Create Disp Packet for each instruction
     // TODO: Send correct disp packet to the correct pipe, do special case for memory (agu)
 
-
-    // always_ff @(posedge clk) begin
-    //     if(rst) begin
+    // always_ff @(posedge clk_i) begin
+    //     if(rst_i) begin
 
     //     end else begin
     //         des
