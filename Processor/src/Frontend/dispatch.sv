@@ -3,8 +3,8 @@ module dispatch (
     input   logic                                       rst,
     input   logic                                       stall_i,
     
-    input   logic           [FIRE_WIDTH-1:0]            rename_vld_i [0:FIRE_WIDTH-1],
-    input   rename_packet_t rename_disp_pkt_i [0:FIRE_WIDTH-1],
+    input   logic           [FIRE_WIDTH-1:0]            rename_vld_i,
+    input   rename_packet_t [FIRE_WIDTH-1:0]            rename_disp_pkt_i,
     output  logic                                       instr_queue_full_o,
     
     dispatch_scheduler_if.dispatch                      disp_sched_if[NUM_FUS],
@@ -29,15 +29,12 @@ module dispatch (
     logic [FIRE_WIDTH-1:0] instr_vld;
     rename_packet_t [FIRE_WIDTH-1:0] instr_pkt;
 
-    //TODO: Connect Rename to the front of the queue
-
-
     instruction_queue u_instr_queue (
         .clk(clk),
         .rst(rst),
         .flush(flush),
-        .rename_vld_i(),
-        .rename_pkt_i(),
+        .rename_vld_i(rename_vld_i & ~instr_queue_full_o), // in theory rename wont send but just in case
+        .rename_pkt_i(rename_disp_pkt_i),
         .full(instr_queue_full_o),
         .dispatch_en_i(assignment_vld),
         .instr_vld_o(instr_vld),
@@ -55,15 +52,15 @@ module dispatch (
     always_comb begin : pipe_steering
         pipe_claimed[0] = '0;
         for (int i = 0; i < FIRE_WIDTH; i++) begin        
-            assigned_pipe[i] = '0;
+            assigned_pipe[i]    = '0;
             assignment_valid[i] = 1'b0;
-            required_fu[i] = instr_pkt[i].required_fu;
-            pipe_free[i] = ~disp_sched_if[i].rs_full;
+            required_fu[i]      = instr_pkt[i].required_fu;
+            pipe_free[i]        = ~disp_sched_if[i].rs_full;
 
             if (i == 0 || assignment_valid[i-1]) begin  // only try if prev slot succeeded
                 for (int j = 0; j < NUM_FUS; j++) begin
                     if (instr_vld[i] && FU_TYPE[j] == required_fu[i] && pipe_free[j] && !pipe_claimed[i][j] && !assignment_valid[i]) begin
-                        assigned_pipe[i] = j;
+                        assigned_pipe[i]    = j;
                         assignment_valid[i] = 1'b1;
                     end
                 end

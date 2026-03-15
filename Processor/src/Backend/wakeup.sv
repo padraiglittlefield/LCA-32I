@@ -1,6 +1,8 @@
 /*
-    Wakeup Module for Scheduler
-        - By; Padraig Littlefield
+    ===================================
+        Wakeup Module for Scheduler
+    ===================================
+        By; Padraig Littlefield
             12/4/25
     Tracks dependencies using a Dependency Bit Matrix, similar to what is outlined by the RSD OoO Soft-Core Processor.
 
