@@ -32,27 +32,32 @@ logic [$clog2(SDQ_ENTRIES)-1:0]  agu_sdq_idx;
 
 logic [RS_ENTRIES-1:0] local_ready_mask [0:NUM_FUS-1];
 logic [(RS_ENTRIES * NUM_FUS)-1:0] global_ready_mask;
-
-
-
-
+logic                               disp_valid          [NUM_FUS];
+disp_packet_t                       disp_pkt            [NUM_FUS];
+logic [(RS_ENTRIES * NUM_FUS)-1:0]  dependency_mask     [NUM_FUS];
+logic [$clog2(RS_ENTRIES)-1:0]      rs_entry_idx        [NUM_FUS];
+logic                               rs_full             [NUM_FUS];
+ 
+ 
 // ==================== Module Declaration ====================== //
-
-
-
-
+ 
 genvar i;
-generate 
-    for(i = 0; i<NUM_FUS; i++) begin : Backend
-        scheduler u_scheduler(
+generate
+    for (i = 0; i < NUM_FUS; i++) begin : Backend
+ 
+        scheduler u_scheduler (
             .clk(clk),
             .rst(rst),
             .local_ready_mask(local_ready_mask[i]),
             .global_ready_mask(global_ready_mask),
-            .disp_if(disp_sched_if[i].scheduler),
-            .exec_if(exec_sched_if[i].scheduler), // TODO: FIX THIS 
+            .disp_valid_i(disp_valid[i]),
+            .disp_pkt_i(disp_pkt[i]),
+            .dependency_mask_i(dependency_mask[i]),
+            .rs_entry_idx_o(rs_entry_idx[i]),
+            .rs_full_o(rs_full[i]),
             .reg_read_if(sched_reg_read_if[i].scheduler)
         );
+
 
         register_read u_register_read (
             .clk(clk),
