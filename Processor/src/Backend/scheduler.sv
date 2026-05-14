@@ -12,7 +12,7 @@ module scheduler (
     input logic rst,
     output logic [RS_ENTRIES-1:0] local_ready_mask,
     input logic [(RS_ENTRIES * NUM_FUS)-1:0] global_ready_mask,
-    dispatch_scheduler_if.scheduler disp_if,
+    dispatch_scheduler_if.scheduler disp_if, // TODO: Remove interface and replace with ports
     execute_scheduler_if.scheduler exec_if, // removed because of the uniformity of functional units
     scheduler_reg_read_if.scheduler reg_read_if
 );

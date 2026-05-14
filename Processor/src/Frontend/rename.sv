@@ -15,7 +15,7 @@ module rename (
 
     // Reorder Buffer -> (Adds entries to the Free List)
     input logic free_vld_i [RETIRE_WIDTH],
-    input logic [$clog2(NUM_PREGS)-1:0] preg_to_free_i [RETIRE_WIDTH],
+    input logic [$clog2(NUM_PREGS)-1:0] preg_to_free_i [RETIRE_WIDTH]
 
 );
 

@@ -146,7 +146,7 @@ store_data_queue u_sdq (
     .ld_sdq_marker_i        (ldq_issue_entry.sdq_marker[$clog2(SDQ_ENTRIES)-1:0]),
     .ld_hit_o               (fwd_hit),
     .ld_data_o              (fwd_data),
-    .ld_ambig_stall_o       (ld_ambig_stall),
+    .ld_ambig_stall_o       (ld_ambig_stall)
     // .clear_sdq_ent_vld_i    (1'b0),
     // .clear_sdq_ent_idx_i    ('0)
 );

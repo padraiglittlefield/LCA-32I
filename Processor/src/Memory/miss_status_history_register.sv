@@ -3,7 +3,6 @@
 *   -> The MSHR is responsible for tracking ongoing misses that have occurred
 *
 */
-import CORE_PKG::*;
 
 module miss_status_history_register (
     input   logic                                   clk_i,                  // Clock
@@ -27,7 +26,9 @@ module miss_status_history_register (
     output  logic   [31:0]                          repair_req_data_o,      // Data to be updated (for missed stores only)
     output  logic   [$clog2(ROB_ENTRIES)-1:0]       repair_req_rob_idx_o,   // ROB index of missed access (for missed loads only)
     output  logic                                   repair_is_store_o       // Was missed access a load?
-);
+    );
+    
+import CORE_PKG::*;
 // TODO: should speculative loads affect the cache? should we not issue any repairs until we know its not speculative
    
 

@@ -21,11 +21,11 @@ logic sdq_full;
 
 
 modport dispatch (
-    
+   input disp_ld_valid
 );
 
 modport lsu (
-
+    output disp_ld_valid
 );
 
 endinterface

@@ -1,7 +1,6 @@
-import CORE_PKG::*;
 
 module RAT(
-    
+  
     input logic clk,
     input logic rst,
     input logic flush,
@@ -16,11 +15,12 @@ module RAT(
     input logic [RENAME_WIDTH-1:0] w_en,
     input logic [$clog2(NUM_AREGS)-1:0] w_dst_areg_i [0:RENAME_WIDTH-1], 
     input logic [$clog2(NUM_PREGS)-1:0] w_new_alias_i [0:RENAME_WIDTH-1]
-);
-
+    );
+    
+  import CORE_PKG::*;
 
 typedef struct packed {
-  logic [$clog2(NUM_PREGS)-1:0] preg_alias
+  logic [$clog2(NUM_PREGS)-1:0] preg_alias;
   // logic alias_vld;
 } rat_entry_t;
 

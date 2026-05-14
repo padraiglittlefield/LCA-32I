@@ -9,7 +9,7 @@ module reorder_buffer #(
     input logic clk,
     input logic rst,
     input logic flush_en,
-    dispatch_reorder_buffer_if.rob disp_if[FIRE_WIDTH],
+    dispatch_reorder_buffer_if.rob disp_if[FIRE_WIDTH], // replace with acutal ports
     execute_reorder_buffer_if.rob exec_if[(NUM_FUS-1)],
     arch_reg_file_reorder_buffer_if.rob arch_reg_file_if[RETIRE_WIDTH],
     reorder_buffer_flush_unit_if.rob flush_if

@@ -87,12 +87,12 @@ generate
                 .clk(clk),
                 .rst(rst),
                 .reg_read_if(reg_read_if_exec_if[i].execute),
-                .lsu_vld_o(agu_vld)
-                .lsu_is_store_o(agu_is_store)
-                .lsu_addr_o(agu_addr)
-                .lsu_store_data_o(agu_store_data)
-                .lsu_rob_idx_o(agu_rob_idx)
-                .lsu_ldq_idx_o(agu_ldq_idx)
+                .lsu_vld_o(agu_vld),
+                .lsu_is_store_o(agu_is_store),
+                .lsu_addr_o(agu_addr),
+                .lsu_store_data_o(agu_store_data),
+                .lsu_rob_idx_o(agu_rob_idx),
+                .lsu_ldq_idx_o(agu_ldq_idx),
                 .lsu_sdq_idx_o(agu_sdq_idx)
             );
 

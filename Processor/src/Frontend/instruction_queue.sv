@@ -1,19 +1,19 @@
 module instruction_queue #(
     parameter DEPTH = 16
 )(
-    input logic clk,
-    input logic rst,
-    input logic flush,
-    input logic [RENAME_WIDTH-1:0] rename_vld_i,
-    input rename_packet_t [RENAME_WIDTH-1:0] rename_pkt_i,
-    output logic [RENAME_WIDTH-1:0] full,
-    input logic [FIRE_WIDTH-1:0] dispatch_en_i,
-    output logic [FIRE_WIDTH-1:0] instr_vld_o,
-    output rename_packet_t [FIRE_WIDTH-1:0] instr_pkt_o
+    input   logic           clk_i,
+    input   logic           rst_i,
+    input   logic           flush_i,
+    input   logic           rename_vld_i    [RENAME_WIDTH],
+    input   rename_packet_t rename_pkt_i    [RENAME_WIDTH],
+    output  logic           full            [RENAME_WIDTH],
+    input   logic           dispatch_en_i   [FIRE_WIDTH],
+    output  logic           instr_vld_o     [FIRE_WIDTH],
+    output  rename_packet_t instr_pkt_o     [FIRE_WIDTH]
 
 );
-
 import CORE_PKG::*;
+
 localparam PTR_WIDTH = $clog2(DEPTH);
 
 
@@ -23,7 +23,7 @@ rename_packet_t queue [DEPTH];
 
 
 // Count how many much to advance tail ptr based on number of instructions renamed  + check if its full 
-logic [RENAME_WIDTH-1:0] instr_queue_full;
+logic instr_queue_full [RENAME_WIDTH];
 logic [$clog2(RENAME_WIDTH+1)-1:0] num_allocated;
 logic [RENAME_WIDTH-1:0] alloc_en;
 logic [PTR_WIDTH:0] alloc_ptr [0:RENAME_WIDTH-1];
@@ -60,7 +60,7 @@ logic [PTR_WIDTH-1:0] dispatch_idx [0:FIRE_WIDTH-1];
 always_comb begin
     num_dispatched = '0;
     for(int i = 0; i<FIRE_WIDTH; i++) begin
-        dispatch_idx[i] = (head_ptr + PTR_WIDTH'(i))[PTR_WIDTH-1:0];
+        dispatch_idx[i] = (PTR_WIDTH-1)'((head_ptr + PTR_WIDTH'(i)));
         if(i == 0) begin
            dispatch_en[i] = dispatch_en_i[i];
         end else begin
@@ -82,8 +82,8 @@ always_comb begin
     end
 end
 
-always_ff @(posedge clk) begin
-    if(rst || flush) begin
+always_ff @(posedge clk_i) begin
+    if(rst_i || flush_i) begin
         
         // reset ptrs
         head_ptr <= '0;

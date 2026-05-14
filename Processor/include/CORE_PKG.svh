@@ -7,6 +7,8 @@ package CORE_PKG;
 
 parameter DECODE_WIDTH = 2;
 
+parameter RENAME_WIDTH = 2;
+
 parameter NUM_PREGS = 64;
 parameter NUM_AREGS = 32;
 
@@ -59,6 +61,11 @@ typedef enum {
     INVALID
 } instr_opcode;
 
+typedef enum logic [1:0] {
+    FU_ALU,
+    FU_AGU
+    // FU_MUL 
+} fu_type_e;
 
 typedef struct packed {
     instr_opcode opcode;
@@ -79,21 +86,19 @@ typedef struct packed {
     fu_type_e required_fu;
     logic [$clog2(NUM_AREGS)-1:0] dst_areg;
     logic [$clog2(NUM_PREGS)-1:0] dst_preg;
+    logic src1_vld; // TODO: Not all instructions have two sources, make sure rename and decode account for this
     logic [$clog2(NUM_PREGS)-1:0] src1_preg;
+    logic src2_vld;
     logic [$clog2(NUM_PREGS)-1:0] src2_preg;
     logic [31:0] imm_val;
     logic instr_valid;
     logic [31:0] pc;
     logic alu_en;
     logic br_taken;
+    logic wb_en;
 } rename_packet_t;
 
 
-typedef enum logic [1:0] {
-    FU_ALU,
-    FU_AGU
-    // FU_MUL 
-} fu_type_e;
 
 parameter fu_type_e FU_TYPE [NUM_FUS] = '{FU_ALU, FU_ALU, FU_ALU, FU_AGU};
 
@@ -103,7 +108,9 @@ typedef struct packed {
     logic [$clog2(NUM_AREGS)-1:0] dst_areg;
     logic [$clog2(NUM_PREGS)-1:0] dst_preg;
     logic [$clog2(NUM_PREGS)-1:0] src1_preg;
+    logic src1_vld;
     logic [$clog2(NUM_PREGS)-1:0] src2_preg;
+    logic src2_vld;
     logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx;
     logic [31:0] imm_val;
     logic instr_valid;

@@ -9,14 +9,16 @@ module dependency_mapping_table (
     input   logic   flush_i,
 
     // Dispatch (Write) ->
-    input   logic                                           fire_vld_i          [0:FIRE_WIDTH-1],
-    input   logic   [$clog2(NUM_PREGS)-1:0]                 dst_preg_i          [0:FIRE_WIDTH-1],
-    input   logic   [$clog2((RS_ENTRIES * NUM_FUS))-1:0]    fire_loc_i          [0:FIRE_WIDTH-1],
+    input   logic                                           fire_vld_i          [FIRE_WIDTH],
+    input   logic   [$clog2(NUM_PREGS)-1:0]                 dst_preg_i          [FIRE_WIDTH],
+    input   logic   [$clog2((RS_ENTRIES * NUM_FUS))-1:0]    fire_loc_i          [FIRE_WIDTH],
     
     // -> Dispatch (Read Dependency) ->
-    input   logic   [$clog2(NUM_PREGS)-1:0]                 src1_preg_i         [0:FIRE_WIDTH-1],
-    input   logic   [$clog2(NUM_PREGS)-1:0]                 src2_preg_i         [0:FIRE_WIDTH-1],
-    output  logic   [(RS_ENTRIES * NUM_FUS)-1:0]            dependency_mask_o   [0:FIRE_WIDTH-1],
+    input   logic   [$clog2(NUM_PREGS)-1:0]                 src1_preg_i         [FIRE_WIDTH],
+    input   logic                                           src1_vld_i          [FIRE_WIDTH],
+    input   logic   [$clog2(NUM_PREGS)-1:0]                 src2_preg_i         [FIRE_WIDTH],
+    input   logic                                           src2_vld_i          [FIRE_WIDTH],
+    output  logic   [(RS_ENTRIES * NUM_FUS)-1:0]            dependency_mask_o   [FIRE_WIDTH],
 
     // Execute (Clears Busy Bit) ->
     input   logic                                           exec_vld_i          [0:NUM_FUS-1],
@@ -43,15 +45,23 @@ always_comb begin : build_dependency_map
     for(int i=0; i<FIRE_WIDTH;i++) begin
         // Read DMT
         dependency_mask_o[i] = '0;
-        src1_dmt_entry[i] = dmt[src1_preg_i[i]];
-        src2_dmt_entry[i] = dmt[src2_preg_i[i]];
-        
-        if(src1_dmt_entry[i].busy_bit) begin
-            dependency_mask_o[i][src1_dmt_entry[i].dependency_loc] = 1'b1;
+        src1_dmt_entry[i] = '0;
+        src2_dmt_entry[i] = '0;
+
+
+        if(src1_vld_i[i]) begin
+            src1_dmt_entry[i] = dmt[src1_preg_i[i]];
+            if(src1_dmt_entry[i].busy_bit) begin
+                dependency_mask_o[i][src1_dmt_entry[i].dependency_loc] = 1'b1;
+            end    
         end
 
-        if(src2_dmt_entry[i].busy_bit) begin
-            dependency_mask_o[i][src2_dmt_entry[i].dependency_loc] = 1'b1;
+        if(src2_vld_i[i]) begin
+            src2_dmt_entry[i] = dmt[src2_preg_i[i]];
+            
+            if(src2_dmt_entry[i].busy_bit) begin
+                dependency_mask_o[i][src2_dmt_entry[i].dependency_loc] = 1'b1;
+            end
         end
 
         // Forward to prevent RAW hazards
