@@ -10,6 +10,8 @@ logic [4:0] dest_reg;
 logic [$clog2(ROB_ENTRIES)-1:0] rob_entry_idx;
 logic rob_full;
 logic wb_en;
+logic [$clog2(LDQ_ENTRIES)-1:0] disp_ldq_idx_i;
+logic [$clog2(SDQ_ENTRIES)-1:0] disp_sdq_idx_i;
 
 modport dispatch (
     input rob_entry_idx, rob_full,

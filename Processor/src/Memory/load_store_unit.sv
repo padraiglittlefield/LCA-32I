@@ -6,19 +6,16 @@ module load_store_unit (
     input   logic                               clk_i, 
     input   logic                               rst_i,
     input   logic                               flush_i,
-
     // Dispatch
     input   logic                               disp_vld_i,
     input   logic                               disp_is_store_i,
-    input   logic   [31:0]                      disp_store_data_i,
     input   logic   [$clog2(SDQ_ENTRIES):0]     disp_sdq_marker_i,  // current SDQ tail at dispatch time
-    input   logic   [$clog2(ROB_ENTRIES)-1:0]   disp_rob_idx_i,
+    // input   logic   [$clog2(ROB_ENTRIES)-1:0]   disp_rob_idx_i, // Not sure what this was meant to do
     output  logic   [$clog2(LDQ_ENTRIES)-1:0]   disp_ldq_idx_o,     // allocated LDQ entry for this load
     output  logic   [$clog2(SDQ_ENTRIES)-1:0]   disp_sdq_idx_o,     // allocated SDQ entry for this store
     output  logic                               ldq_full_o,
     output  logic                               sdq_full_o,
     // output  logic                               stall_mem
-
     // Execute (AGU)
     input   logic                               agu_vld_i,
     input   logic                               agu_is_store_i,
@@ -27,14 +24,12 @@ module load_store_unit (
     input   logic   [$clog2(ROB_ENTRIES)-1:0]   agu_rob_idx_i,
     input   logic   [$clog2(LDQ_ENTRIES)-1:0]   agu_ldq_idx_i,
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   agu_sdq_idx_i,
-
     // ROB
     input   logic                               rob_store_cmit_vld_i,   // indicates that a store has been committed and we can thusly fire it (no longer speculative)
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   rob_store_cmit_idx_i,   // the commited store's entry in the sdq
     output  logic                               ld_cmt_vld_o,       
     output  logic   [31:0]                      ld_cmt_data_o,
     output  logic   [$clog2(ROB_ENTRIES)-1:0]   ld_cmt_rob_idx_o,
-
     // Main Memory
     output  logic                               mem_req_vld_o,
     output  logic   [31:0]                      mem_req_addr_o,
@@ -128,7 +123,7 @@ store_data_queue u_sdq (
     .rst_i                  (rst_i),
     .flush_i                (flush_i),
     .disp_vld_i             (disp_vld_i & disp_is_store_i),
-    .store_data_i           (disp_store_data_i),
+    .store_data_i           (agu_store_data_i),
     .cmit_vld_i             (rob_store_cmit_vld_i),
     .cmit_idx_i             (rob_store_cmit_idx_i),
     .exec_vld_i             (agu_vld_i & agu_is_store_i),

@@ -15,10 +15,12 @@ module dispatch (
     input   logic                                   rs_full_i           [NUM_FUS],
     // Reorder Buffer
     output  logic                                   rob_fire_valid_o    [FIRE_WIDTH],
-    output  logic   [4:0]                           rob_dst_reg_o      [FIRE_WIDTH],
+    output  logic   [4:0]                           rob_dst_reg_o       [FIRE_WIDTH],
     output  logic                                   rob_wb_en_o         [FIRE_WIDTH],
     input   logic   [$clog2(ROB_ENTRIES)-1:0]       rob_entry_idx_i     [FIRE_WIDTH],
     input   logic                                   rob_full_i          [FIRE_WIDTH],
+    output  logic   [$clog2(LDQ_ENTRIES)-1:0]       rob_ldq_idx_o       [FIRE_WIDTH],
+    output  logic   [$clog2(SDQ_ENTRIES)-1:0]       rob_sdq_idx_o       [FIRE_WIDTH],
     // Execute <-
     //LSU port
     input   logic   [$clog2(LDQ_ENTRIES)-1:0]       disp_ldq_idx_i,     // allocated LDQ entry for this load
@@ -27,18 +29,15 @@ module dispatch (
     input   logic                                   sdq_full_i,
     output  logic                                   disp_vld_o,
     output  logic                                   disp_is_store_o,
-    output  logic   [31:0]                          disp_store_data_o,
-    output  logic   [$clog2(SDQ_ENTRIES):0]         disp_sdq_marker_o,  // current SDQ tail at dispatch time
-    output  logic   [$clog2(ROB_ENTRIES)-1:0]       disp_rob_idx_o
+    output  logic   [$clog2(SDQ_ENTRIES):0]         disp_sdq_marker_o  // current SDQ tail at dispatch time. Counter that is incremeneted upon dispatching a store
+    // output  logic   [$clog2(ROB_ENTRIES)-1:0]       disp_rob_idx_o
 
 );
 
-    logic [$clog2(FIRE_WIDTH)-1:0] dispatch_stall;
-
-  
+    logic [$clog2(FIRE_WIDTH)-1:0] dispatch_stall; //TODO: Properly track Dispatch Stalling 
     logic instr_vld[FIRE_WIDTH];
     rename_packet_t instr_pkt[FIRE_WIDTH];
-    disp_packet_t disp_pkt [0:FIRE_WIDTH-1];
+    disp_packet_t new_disp_pkt [0:FIRE_WIDTH-1];
 
     instruction_queue u_instr_queue (
         .clk_i(clk_i),
@@ -131,48 +130,76 @@ module dispatch (
     );
 
 
-    // TODO: Allocate ROB Entry
     always_comb begin
         for(int i = 0; i < FIRE_WIDTH; i++) begin
-            rob_dst_reg_o[i] = instr_pkt[i].dst_areg; 
+            rob_dst_reg_o[i]    = instr_pkt[i].dst_areg; 
             rob_fire_valid_o[i] = fire_vld[i];
-            rob_wb_en_o[i] = instr_pkt[i].wb_en;
+            rob_wb_en_o[i]      = instr_pkt[i].wb_en;
+
+            if(FU_TYPE[assigned_pipe[i]] == FU_AGU) begin
+                rob_ldq_idx_o[i] = disp_ldq_idx_i;
+                rob_sdq_idx_o[i] = disp_sdq_idx_i;
+            end else begin
+                rob_ldq_idx_o[i] = '0;
+                rob_sdq_idx_o[i] = '0;
+            end
         end
     end
 
-
-    // TODO: Create Disp Packet for each instruction
-    // TODO: Send correct disp packet to the correct pipe, do special case for memory (agu)
 
     always_comb begin : gen_disp_pkt 
         for(int i = 0; i<FIRE_WIDTH;i++) begin
-            disp_pkt[i].opcode      = instr_pkt[i].opcode;
-            disp_pkt[i].dst_areg    = instr_pkt[i].dst_areg;
-            disp_pkt[i].dst_preg    = instr_pkt[i].dst_preg;
-            disp_pkt[i].src1_preg   = instr_pkt[i].src1_preg;
-            disp_pkt[i].src1_vld    = instr_pkt[i].src1_vld;
-            disp_pkt[i].src2_preg   = instr_pkt[i].src2_preg;
-            disp_pkt[i].src2_vld    = instr_pkt[i].src2_vld;
-            disp_pkt[i].imm_val     = instr_pkt[i].imm_val;
-            disp_pkt[i].instr_valid = instr_pkt[i].instr_valid;
-            disp_pkt[i].pc          = instr_pkt[i].pc;
-            disp_pkt[i].alu_en      = instr_pkt[i].alu_en;
-            disp_pkt[i].br_taken    = instr_pkt[i].br_taken;
-            
-            disp_pkt[i].rob_entry_idx = rob_entry_idx_i[i];
+            new_disp_pkt[i].opcode          = instr_pkt[i].opcode;
+            new_disp_pkt[i].dst_areg        = instr_pkt[i].dst_areg;
+            new_disp_pkt[i].dst_preg        = instr_pkt[i].dst_preg;
+            new_disp_pkt[i].src1_preg       = instr_pkt[i].src1_preg;
+            new_disp_pkt[i].src1_vld        = instr_pkt[i].src1_vld;
+            new_disp_pkt[i].src2_preg       = instr_pkt[i].src2_preg;
+            new_disp_pkt[i].src2_vld        = instr_pkt[i].src2_vld;
+            new_disp_pkt[i].imm_val         = instr_pkt[i].imm_val;
+            new_disp_pkt[i].instr_valid     = instr_pkt[i].instr_valid;
+            new_disp_pkt[i].pc              = instr_pkt[i].pc;
+            new_disp_pkt[i].alu_en          = instr_pkt[i].alu_en;
+            new_disp_pkt[i].br_taken        = instr_pkt[i].br_taken;
 
+            new_disp_pkt[i].rob_entry_idx   = rob_entry_idx_i[assigned_pipe[i]];
         end
     end
 
-    // always_ff @(posedge clk_i) begin : pipeline_register 
-    //     if(rst_i) begin
-            
-    //     end else begin
-            
-    //     end
-    // end
+    always_ff @(posedge clk_i) begin : pipeline_register 
+        if(rst_i) begin
+            for(int i = 0; i <NUM_FUS;i++) begin
+                disp_pkt_o[i]          <= '0;
+                disp_valid_o[i]        <= '0;
+                dependency_mask_o[i]   <= '0;
+            end
+        end else begin
+            for(int i = 0; i<FIRE_WIDTH;i++) begin
+                disp_pkt_o[assigned_pipe[i]]        <= new_disp_pkt[i];
+                disp_valid_o[assigned_pipe[i]]      <= 1'b1; //TODO: Alongside dispatch stall, consistently track validity/enabling of fire
+                dependency_mask_o[assigned_pipe[i]] <= dm_dependency_mask[i];
+            end
+        end
+    end
 
     // TODO: Connect to LSU
+    //TODO: Track store sequence number (marker)
+    always_comb begin
+        for (int i = 0; i<FIRE_WIDTH;i++) begin
+            if(FU_TYPE[assigned_pipe[i]] == FU_AGU) begin
+                disp_vld_o = 1'b1; //TODO: Proper validity tracking under stalls and such
+                disp_is_store_o = ;
+                disp_sdq_marker_o
+            end else begin
+                disp_vld_o = '0;
+                disp_is_store_o = '0;
+                disp_sdq_marker_o = '0;
+            end        
+        end
+    end 
+    
+    
+    
 
 
 endmodule

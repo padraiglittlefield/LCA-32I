@@ -5,12 +5,12 @@ module store_data_queue #(
     input   logic                               flush_i,
     // Dispatch Signals (Entry Allocation)
     input   logic                               disp_vld_i,         // whether the instr is valid
-    input   logic   [31:0]                      store_data_i,       // Store data of this instruction
     // Committing Store from ROB
     input   logic                               cmit_vld_i,         // valid commit from rob
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   cmit_idx_i,         // index of entry holding committed instruction
     // AGU from Execute
     input   logic                               exec_vld_i,         // valid address from execute
+    input   logic   [31:0]                      exec_store_data_i,  // Store data of this instruction
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   exec_sdq_idx_i,     // sdq entry to write address to
     input   logic   [31:0]                      exec_addr_i,        // generated address
     input   logic   [$clog2(ROB_ENTRIES)-1:0]   exec_rob_idx_i,       // rob address for store instruction
@@ -75,9 +75,9 @@ always_ff @(posedge clk_i) begin
         // allocate new entry upon dispatch
         if (disp_vld_i & ~full) begin
             sdq[tail_ptr].valid         <= 1'b1;
-            sdq[tail_ptr].store_data    <= store_data_i;
+            sdq[tail_ptr].store_data    <= '0; // dont know the data yet as we haven't read the register file 
             sdq[tail_ptr].addr_valid    <= 1'b0;
-            sdq[tail_ptr].addr          <= '0;
+            sdq[tail_ptr].addr          <= '0; // dont know the addr yet for the same reasons
             sdq[tail_ptr].committed     <= 1'b0;
             sdq[tail_ptr].issued        <= 1'b0;
             sdq[tail_ptr].rob_entry_idx <= '0;
@@ -100,6 +100,7 @@ always_ff @(posedge clk_i) begin
 
         if(exec_vld_i) begin
             sdq[exec_sdq_idx_i].addr_valid      <= 1'b1;
+            sdq[exec_sdq_idx_i].store_data      <= exec_store_data_i;
             sdq[exec_sdq_idx_i].addr            <= exec_addr_i;
             sdq[exec_sdq_idx_i].rob_entry_idx   <= exec_rob_idx_i;
         end 

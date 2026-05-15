@@ -1,7 +1,7 @@
 /* Reorder Buffer Module
         - By: Padraig Littlefield
 */
-
+// TODO: Refactor ports for updated dispatch info
 module reorder_buffer #(
     parameter RETIRE_WIDTH = 2, // Max Number of entries to retire per cycle 
     parameter FIRE_WIDTH = 2   // Max Number of entries to be allocated per cycle
