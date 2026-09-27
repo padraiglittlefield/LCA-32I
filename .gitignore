@@ -1,0 +1,7 @@
+# Verilator build output
+obj_dir/
+
+# Waveforms and sim logs
+*.vcd
+*.fst
+*.log

@@ -188,8 +188,8 @@ module dispatch (
         for (int i = 0; i<FIRE_WIDTH;i++) begin
             if(FU_TYPE[assigned_pipe[i]] == FU_AGU) begin
                 disp_vld_o = 1'b1; //TODO: Proper validity tracking under stalls and such
-                disp_is_store_o = ;
-                disp_sdq_marker_o
+                disp_is_store_o = '0;
+                disp_sdq_marker_o = '0;
             end else begin
                 disp_vld_o = '0;
                 disp_is_store_o = '0;

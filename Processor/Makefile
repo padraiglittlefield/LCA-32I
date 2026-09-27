@@ -25,7 +25,7 @@ GTKWAVE := gtkwave
 # Trace format selection (default to FST)
 TRACE_FORMAT ?= fst
 
-.PHONY: all clean view help build_vcd build_fst view_vcd view_fst
+.PHONY: all clean view help build_vcd build_fst view_vcd view_fst regress
 
 # Default target
 all:
@@ -139,6 +139,11 @@ compile-only: check_target compile
 # Run only (assumes already compiled)
 run-only: check_target run
 
+# Regression: build and run every sim/tb_*.sv and report a pass rate
+# Optionally restrict with tests="dispatch scheduler"
+regress:
+	@./regress.sh $(tests)
+
 # Clean build artifacts
 clean:
 	@echo "=== Cleaning build artifacts ==="
@@ -166,6 +171,8 @@ help:
 	@echo "Other targets:"
 	@echo "  make compile-only target=<MODULE> - Only compile"
 	@echo "  make run-only target=<MODULE>     - Only run (if already compiled)"
+	@echo "  make regress                      - Run all testbenches, report pass rate"
+	@echo "  make regress tests=\"a b\"         - Run only the listed testbenches"
 	@echo "  make clean                        - Remove build artifacts"
 	@echo ""
 	@echo "Examples:"
