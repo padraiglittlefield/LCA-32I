@@ -38,7 +38,7 @@ module tb_store_data_queue;
     localparam FIRE_WIDTH = 2;
 
     logic                               disp_vld_i;
-    logic   [31:0]                      store_data_i;     // whether the instr is valid
+    logic   [31:0]                      exec_store_data_i; // store data, supplied at execute
     logic                               cmit_vld_i;       // valid commit from rob
     logic   [$clog2(SDQ_ENTRIES)-1:0]   cmit_idx_i;       // index of entry holding committed instruction
     logic                               exec_vld_i;
@@ -46,6 +46,8 @@ module tb_store_data_queue;
     logic   [31:0]                      exec_addr_i;
     logic   [$clog2(SDQ_ENTRIES)-1:0]   sdq_alloc_idx_o;  // index of recently allocated instr (for use as sdq_marker)
     logic                               sdq_full_o;       // whether the sdq is full
+    logic                               issue_en_i;
+    logic                               issue_ack_i;
     sdq_entry_t                         issue_entry_o; // output entry of issuing instruction
     logic                               issue_vld_o;        // valid issue
     logic                               ld_vld_i;
@@ -60,15 +62,17 @@ module tb_store_data_queue;
         .rst_i(rst),
         .flush_i(flush),
         .disp_vld_i(disp_vld_i),
-        .store_data_i(store_data_i),     
         .cmit_vld_i(cmit_vld_i),       
         .cmit_idx_i(cmit_idx_i),       
         .exec_vld_i(exec_vld_i),
+        .exec_store_data_i(exec_store_data_i),
         .exec_sdq_idx_i(exec_sdq_idx_i),
         .exec_addr_i(exec_addr_i),
         .exec_rob_idx_i(exec_rob_idx_i),
         .sdq_alloc_idx_o(sdq_alloc_idx_o),  
         .sdq_full_o(sdq_full_o),       
+        .issue_en_i(issue_en_i),
+        .issue_ack_i(issue_ack_i),
         .issue_entry_o(issue_entry_o),
         .issue_vld_o(issue_vld_o),        
         .ld_vld_i(ld_vld_i),
@@ -86,7 +90,7 @@ module tb_store_data_queue;
             clk = 0; 
             rst = 0;
             disp_vld_i = 0;
-            store_data_i = 0;
+            exec_store_data_i = 0;
             exec_vld_i = 0;
             exec_sdq_idx_i = 0;
             exec_addr_i = 0;
@@ -96,6 +100,8 @@ module tb_store_data_queue;
             ld_addr_i = 0;
             ld_sdq_marker_i = 0;
             exec_rob_idx_i = 0;
+            issue_en_i = 1;
+            issue_ack_i = 0;
         end
     endtask
 
@@ -130,16 +136,12 @@ module tb_store_data_queue;
     // ======== Helper Methods ========
     // ================================
     
-    task dispatch_entry(
-        input logic [31:0]  data
-    );
+    task dispatch_entry();
         begin
             //set all stuff
             disp_vld_i = 1;
-            store_data_i = data;
             @(negedge clk);
             disp_vld_i = 0;
-            store_data_i = 0;
             @(negedge clk);
         end
     endtask
@@ -147,14 +149,17 @@ module tb_store_data_queue;
     task update_addr (
         input logic                             addr_vld,
         input logic [$clog2(SDQ_ENTRIES)-1:0]   addr_ldq_idx,
-        input logic [31:0]                      addr
+        input logic [31:0]                      addr,
+        input logic [31:0]                      data
     );
         begin
             exec_vld_i = 1;
             exec_sdq_idx_i = addr_ldq_idx;
             exec_addr_i = addr;
+            exec_store_data_i = data;
             @(negedge clk);
             exec_vld_i = 0;
+            exec_store_data_i = 0;
             @(negedge clk);
         end
     endtask
@@ -196,17 +201,18 @@ module tb_store_data_queue;
     
     task test_alloc();
         begin
-            dispatch_entry(21);
+            dispatch_entry();
             check_assertion("First entry should be valid", dut.sdq[0].valid == 1);
-            check_assertion("First entry should have correct data", dut.sdq[0].store_data == 21);
+            check_assertion("First entry data should be unknown until execute", dut.sdq[0].store_data == 0);
         end
     endtask
 
     task test_exec();
         begin
-            update_addr(1, dut.head_ptr, 5108);
+            update_addr(1, dut.head_ptr, 5108, 21);
             check_assertion("First entry should have valid addr", dut.sdq[0].addr_valid == 1);
             check_assertion("First entry should have correct addr", dut.sdq[0].addr == 5108);
+            check_assertion("First entry should have correct data", dut.sdq[0].store_data == 21);
         end
     endtask
 
@@ -223,7 +229,7 @@ module tb_store_data_queue;
     task test_fill();
         begin
             for(int i = 0; i < 17; i++) begin
-                dispatch_entry(i);
+                dispatch_entry();
             end
             check_assertion("SDQ should be full", dut.full == 1);
         end
@@ -232,7 +238,7 @@ module tb_store_data_queue;
      task test_empty();
         begin
             for(int i = 0; i < 16; i++) begin
-                update_addr(1, i, i*3);
+                update_addr(1, i, i*3, i);
             end
             for(int i = 0; i < 16; i++) begin
                 commit_store(i);
@@ -242,8 +248,8 @@ module tb_store_data_queue;
 
     task test_lookup();
         begin
-            dispatch_entry(510);
-            update_addr(1, dut.head_ptr, 8);
+            dispatch_entry();
+            update_addr(1, dut.head_ptr, 8, 510);
             load_lookup(8, 0); // should miss
             check_assertion("Load Miss, correct addr but wrong ordering", dut.ld_hit_o == 0);
             load_lookup(8, 1); // should hit

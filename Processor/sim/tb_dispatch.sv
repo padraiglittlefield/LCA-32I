@@ -34,9 +34,7 @@ module tb_dispatch;
     logic sdq_full;
     logic disp_vld;
     logic disp_is_store;
-    logic [31:0] disp_store_data;
     logic [$clog2(SDQ_ENTRIES):0] disp_sdq_marker;
-    logic [$clog2(ROB_ENTRIES)-1:0] disp_rob_idx;
 
     disp_packet_t disp_pkt [NUM_FUS];
     logic disp_valid [NUM_FUS];
@@ -75,9 +73,7 @@ module tb_dispatch;
         .sdq_full_i(sdq_full),
         .disp_vld_o(disp_vld),
         .disp_is_store_o(disp_is_store),
-        .disp_store_data_o(disp_store_data),
-        .disp_sdq_marker_o(disp_sdq_marker),
-        .disp_rob_idx_o(disp_rob_idx)
+        .disp_sdq_marker_o(disp_sdq_marker)
     );
     
     // Clock generation

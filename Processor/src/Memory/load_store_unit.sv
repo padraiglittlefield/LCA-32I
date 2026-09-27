@@ -123,7 +123,7 @@ store_data_queue u_sdq (
     .rst_i                  (rst_i),
     .flush_i                (flush_i),
     .disp_vld_i             (disp_vld_i & disp_is_store_i),
-    .store_data_i           (agu_store_data_i),
+    .exec_store_data_i      (agu_store_data_i),
     .cmit_vld_i             (rob_store_cmit_vld_i),
     .cmit_idx_i             (rob_store_cmit_idx_i),
     .exec_vld_i             (agu_vld_i & agu_is_store_i),
