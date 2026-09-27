@@ -18,7 +18,6 @@ VERILATOR_VCD_FLAGS := $(VERILATOR_BASE_FLAGS) --trace
 # Find all source files
 VERILOG_SOURCES := $(shell find $(SRC_DIR) -name "*.sv")
 INCLUDE_FILES := $(shell find $(INC_DIR) -name "*.sv" -o -name "*.svh")
-INTERFACE_FILES := $(shell find $(SRC_DIR)/Interfaces -name "*.svh")
 
 # GTKWave for viewing waveforms
 GTKWAVE := gtkwave
@@ -63,7 +62,6 @@ compile_fst:
 	fi
 	$(VERILATOR) $(VERILATOR_FST_FLAGS) \
 		$(INC_DIR)/CORE_PKG.svh \
-		$(INTERFACE_FILES) \
 		$(filter-out $(INC_DIR)/CORE_PKG.svh, $(INCLUDE_FILES)) \
 		$(SIM_DIR)/tb_$(target).sv \
 		$(VERILOG_SOURCES) \
@@ -103,7 +101,6 @@ compile_vcd:
 	fi
 	$(VERILATOR) $(VERILATOR_VCD_FLAGS) \
 		$(INC_DIR)/CORE_PKG.svh \
-		$(INTERFACE_FILES) \
 		$(filter-out $(INC_DIR)/CORE_PKG.svh, $(INCLUDE_FILES)) \
 		$(SIM_DIR)/tb_$(target).sv \
 		$(VERILOG_SOURCES) \

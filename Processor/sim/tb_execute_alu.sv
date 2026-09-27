@@ -32,18 +32,40 @@ module tb_execute_alu;
         $dumpvars(0,tb_execute_alu);
     end
 
-    reg_read_execute_if reg_read_if();
-    execute_fwrd_if fwrd_if();
-    execute_phys_reg_file_if reg_file_if();
-    execute_reorder_buffer_if rob_if();
+    // Register Read
+    logic                           rr_fire_valid;
+    exec_packet_t                   rr_pkt;
+    // Forwarding Unit
+    logic                           fwrd_valid;
+    logic [$clog2(NUM_PREGS)-1:0]   fwrd_dst_preg;
+    logic [31:0]                    fwrd_val;
+    // Register File
+    logic                           rf_wr_en;
+    logic [$clog2(NUM_PREGS)-1:0]   rf_wr_preg;
+    logic [31:0]                    rf_wr_val;
+    // Reorder Buffer
+    logic                           rob_valid;
+    logic [$clog2(ROB_ENTRIES)-1:0] rob_idx;
+    logic [31:0]                    rob_val;
+    logic                           rob_br_mispred;
+    logic                           rob_exception;
 
     execute_alu dut (
         .clk(clk),
         .rst(rst),
-        .reg_read_if(reg_read_if),
-        .fwrd_if(fwrd_if),
-        .reg_file_if(reg_file_if),
-        .rob_if(rob_if)
+        .rr_fire_valid_i(rr_fire_valid),
+        .rr_pkt_i(rr_pkt),
+        .fwrd_valid_o(fwrd_valid),
+        .fwrd_dst_preg_o(fwrd_dst_preg),
+        .fwrd_val_o(fwrd_val),
+        .rf_wr_en_o(rf_wr_en),
+        .rf_wr_preg_o(rf_wr_preg),
+        .rf_wr_val_o(rf_wr_val),
+        .rob_valid_o(rob_valid),
+        .rob_idx_o(rob_idx),
+        .rob_val_o(rob_val),
+        .rob_br_mispred_o(rob_br_mispred),
+        .rob_exception_o(rob_exception)
     );
 
     // ===== Helper Methods ==== //
@@ -52,23 +74,8 @@ module tb_execute_alu;
         begin
             clk = 0; 
             rst = 0;
-            
-            // register file 
-            reg_file_if.ex_valid = '0;
-            reg_file_if.ex_val = '0;
-            reg_file_if.ex_dst_reg = '0;
-
-            // forward
-            fwrd_if.dst_reg = '0;
-            fwrd_if.ex_val = '0;
-            fwrd_if.ex_valid = '0;
-
-            // rob
-            rob_if.br_mispred = '0;
-            rob_if.exception = '0;
-            rob_if.rob_entry_idx = '0;
-            rob_if.ex_valid = '0;
-            rob_if.ex_val = '0;
+            rr_fire_valid = 1'b0;
+            rr_pkt = '0;
         end
     endtask
 
@@ -128,12 +135,12 @@ module tb_execute_alu;
             new_exec_pkt.alu_en = alu_en;
             new_exec_pkt.br_taken = br_taken;
 
-            reg_read_if.exec_pkt = new_exec_pkt;
-            reg_read_if.fire_valid = 1'b1;
+            rr_pkt = new_exec_pkt;
+            rr_fire_valid = 1'b1;
             @(negedge clk);
             $display("Sent instruction: OPCODE= %s, rob_entry= %0d, PC= 0x%h, alu_en= %0d, ,val1= %0d, val2= %0d, imm_val= %0d, dst-areg= %0d, dst-preg= %0d, br_taken= %0d at Cycle %0d", 
                 opcode.name(), rob_entry_idx, pc, alu_en, src1_val, src2_val, imm_val, dst_areg, dst_preg, br_taken ,cycle_count);
-            reg_read_if.fire_valid = 1'b0;
+            rr_fire_valid = 1'b0;
             @(negedge clk);
         
         end
@@ -198,9 +205,9 @@ module tb_execute_alu;
             // write to reg file
             send_instruction(ADD, 0, 0, 1, 33, 7, 1, 5, 5, 1, 0);
             @(posedge clk);
-            check_assertion("Execute should write to the correct dest register", reg_file_if.ex_dst_reg == 33);
-            check_assertion("Execute value should be valid", reg_file_if.ex_valid == 1'b1);
-            check_assertion("Execute value should be correct", reg_file_if.ex_val == 10);
+            check_assertion("Execute should write to the correct dest register", rf_wr_preg == 33);
+            check_assertion("Execute value should be valid", rf_wr_en == 1'b1);
+            check_assertion("Execute value should be correct", rf_wr_val == 10);
         end
     endtask
 
@@ -211,11 +218,11 @@ module tb_execute_alu;
             send_instruction(ADD, 0, 7, 1, 33, 7, 1, 5, 5, 1, 0);
             @(posedge clk);
             debug_alu();
-            check_assertion("No branch misprediction should be detected", rob_if.br_mispred == 0);
-            check_assertion("No exeception should be raised", rob_if.exception == 0);
-            check_assertion("Execute should write to the correct ROB entry", rob_if.rob_entry_idx == 7);
-            check_assertion("Execute value should be valid", rob_if.ex_valid == 1);
-            check_assertion("Execute value should be correct", rob_if.ex_val == 10);
+            check_assertion("No branch misprediction should be detected", rob_br_mispred == 0);
+            check_assertion("No exeception should be raised", rob_exception == 0);
+            check_assertion("Execute should write to the correct ROB entry", rob_idx == 7);
+            check_assertion("Execute value should be valid", rob_valid == 1);
+            check_assertion("Execute value should be correct", rob_val == 10);
             
         end
     endtask
@@ -226,9 +233,9 @@ module tb_execute_alu;
      
             send_instruction(ADD, 0, 0, 1, 33, 7, 1, 5, 5, 1, 0);
             @(posedge clk);
-            check_assertion("Execute should send correct dest register", reg_file_if.ex_dst_reg == 33);
-            check_assertion("Forwarded Execute value should be valid", reg_file_if.ex_valid == 1'b1);
-            check_assertion("Forwarded Execute value should be correct", reg_file_if.ex_val == 10);
+            check_assertion("Execute should send correct dest register", rf_wr_preg == 33);
+            check_assertion("Forwarded Execute value should be valid", rf_wr_en == 1'b1);
+            check_assertion("Forwarded Execute value should be correct", rf_wr_val == 10);
         end
     endtask
 
@@ -238,8 +245,8 @@ module tb_execute_alu;
 
             send_instruction(BNE, 0, 0, 1, 33, 7, 1, 6, 7, 1, 1);
             @(posedge clk);
-            check_assertion("Execute value should be valid", rob_if.ex_valid == 1);
-            check_assertion("No branch misprediction should be detected", rob_if.br_mispred == 0);
+            check_assertion("Execute value should be valid", rob_valid == 1);
+            check_assertion("No branch misprediction should be detected", rob_br_mispred == 0);
         end
     endtask
 
@@ -249,8 +256,8 @@ module tb_execute_alu;
 
             send_instruction(BNE, 0, 0, 1, 33, 7, 1, 6, 7, 1, 0);
             @(posedge clk);
-            check_assertion("Execute value should be valid", rob_if.ex_valid == 1);
-            check_assertion("Branch misprediction should be detected", rob_if.br_mispred == 1);
+            check_assertion("Execute value should be valid", rob_valid == 1);
+            check_assertion("Branch misprediction should be detected", rob_br_mispred == 1);
         end
     endtask
 
@@ -260,8 +267,8 @@ module tb_execute_alu;
 
             send_instruction(BNE, 0, 0, 1, 33, 7, 1, 7, 7, 1, 0);
             @(posedge clk);
-            check_assertion("Execute value should be valid", rob_if.ex_valid == 1);
-            check_assertion("No branch misprediction should be detected", rob_if.br_mispred == 0);
+            check_assertion("Execute value should be valid", rob_valid == 1);
+            check_assertion("No branch misprediction should be detected", rob_br_mispred == 0);
         end
     endtask
 
@@ -271,8 +278,8 @@ module tb_execute_alu;
 
             send_instruction(BNE, 0, 0, 1, 33, 7, 1, 7, 7, 1, 1);
             @(posedge clk);
-            check_assertion("Execute value should be valid", rob_if.ex_valid == 1);
-            check_assertion("Branch misprediction should be detected", rob_if.br_mispred == 1);
+            check_assertion("Execute value should be valid", rob_valid == 1);
+            check_assertion("Branch misprediction should be detected", rob_br_mispred == 1);
         end
     endtask
 

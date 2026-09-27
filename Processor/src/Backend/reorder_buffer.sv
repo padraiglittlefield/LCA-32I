@@ -9,10 +9,25 @@ module reorder_buffer #(
     input logic clk,
     input logic rst,
     input logic flush_en,
-    dispatch_reorder_buffer_if.rob disp_if[FIRE_WIDTH], // replace with acutal ports
-    execute_reorder_buffer_if.rob exec_if[(NUM_FUS-1)],
-    arch_reg_file_reorder_buffer_if.rob arch_reg_file_if[RETIRE_WIDTH],
-    reorder_buffer_flush_unit_if.rob flush_if
+    // Dispatch
+    input  logic                            disp_fire_valid_i   [FIRE_WIDTH],
+    input  logic [$clog2(NUM_AREGS)-1:0]    disp_dst_areg_i     [FIRE_WIDTH],
+    input  logic                            disp_wb_en_i        [FIRE_WIDTH],
+    output logic [$clog2(ROB_ENTRIES)-1:0]  disp_rob_idx_o      [FIRE_WIDTH],
+    output logic                            disp_rob_full_o     [FIRE_WIDTH],
+    // Execute
+    input  logic                            ex_valid_i          [NUM_FUS-1],
+    input  logic [$clog2(ROB_ENTRIES)-1:0]  ex_rob_idx_i        [NUM_FUS-1],
+    input  logic [31:0]                     ex_val_i            [NUM_FUS-1],
+    input  logic                            ex_br_mispred_i     [NUM_FUS-1],
+    input  logic                            ex_exception_i      [NUM_FUS-1],
+    // Register File
+    output logic                            ret_wr_en_o         [RETIRE_WIDTH],
+    output logic [$clog2(NUM_AREGS)-1:0]    ret_wr_areg_o       [RETIRE_WIDTH],
+    output logic [31:0]                     ret_wr_val_o        [RETIRE_WIDTH],
+    // Flush
+    output logic                            flush_o,
+    output logic [31:0]                     flush_pc_o
 );
 
 
@@ -75,21 +90,21 @@ logic [31:0] restore_pc;
 
 */
 
-// interface connections for the Dispatch Interface
+// Dispatch ports
 genvar i;
 generate
     for(i = 0; i < FIRE_WIDTH;i++) begin
         always_comb begin            
             // allocate a new entry
-            alloc_valid[i] = disp_if[i].fire_valid;
-            alloc_entry[i].dest_reg = disp_if[i].dest_reg;
-            alloc_entry[i].wb_en = disp_if[i].wb_en;
+            alloc_valid[i] = disp_fire_valid_i[i];
+            alloc_entry[i].dest_reg = disp_dst_areg_i[i];
+            alloc_entry[i].wb_en = disp_wb_en_i[i];
             alloc_entry[i].mispred = 1'b0;
             alloc_entry[i].exception = 1'b0;
 
             // return status of rob and entry idx
-            disp_if[i].rob_full = alloc_full[i];
-            disp_if[i].rob_entry_idx = alloc_full[i] ? 'x : alloc_idx[i];
+            disp_rob_full_o[i] = alloc_full[i];
+            disp_rob_idx_o[i] = alloc_full[i] ? 'x : alloc_idx[i];
         end
     end
 endgenerate
@@ -155,13 +170,13 @@ always_comb begin
     end
 end
 
-// connect with register file interfaces
+// Register file ports
 generate
     for(i = 0; i < RETIRE_WIDTH; i++) begin
         always_comb begin
-            arch_reg_file_if[i].dest_reg = retire_entry[i].dest_reg;
-            arch_reg_file_if[i].result = retire_status[i].result;
-            arch_reg_file_if[i].valid = retire_enable[i] && retire_entry[i].wb_en;
+            ret_wr_areg_o[i] = retire_entry[i].dest_reg;
+            ret_wr_val_o[i] = retire_status[i].result;
+            ret_wr_en_o[i] = retire_enable[i] && retire_entry[i].wb_en;
         end
     end
 endgenerate
@@ -220,24 +235,23 @@ end
 
 always_ff @(posedge clk) begin
     if(rst || flush_en) begin
-        flush_if.flush_out <= '0;
-        flush_if.pc <= '0;
+        flush_o <= '0;
+        flush_pc_o <= '0;
     end else begin
-        flush_if.flush_out <= |(retire_enable & retire_flush);
-        flush_if.pc <= restore_pc;
+        flush_o <= |(retire_enable & retire_flush);
+        flush_pc_o <= restore_pc;
     end
 end
 
 
-/* ===== Result Bus/Execute Interface =====*/
+/* ===== Result Bus/Execute =====*/
 
-// connect to result bus interface
 generate
     for (i = 0; i < RESULT_FINISH_WIDTH; i++) begin
         always_comb begin
-            result_valid[i] = exec_if[i].ex_valid;
-            result_idx[i] = exec_if[i].rob_entry_idx;
-            result_data[i] = exec_if[i].ex_val;
+            result_valid[i] = ex_valid_i[i];
+            result_idx[i] = ex_rob_idx_i[i];
+            result_data[i] = ex_val_i[i];
 
             //TODO: Connect LSU to ROB for loading values
         end

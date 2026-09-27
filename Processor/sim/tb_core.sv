@@ -109,9 +109,9 @@ module tb_core;
             dut.dependency_mask[fu_idx] = dep_mask;
 
             // ROB dispatch
-            dut.disp_rob_if[0].dest_reg   = dst_areg;
-            dut.disp_rob_if[0].fire_valid = 1'b1;
-            dut.disp_rob_if[0].wb_en      = 1'b1;
+            dut.disp_rob_dst_areg[0]   = dst_areg;
+            dut.disp_rob_fire_valid[0] = 1'b1;
+            dut.disp_rob_wb_en[0]      = 1'b1;
 
             @(negedge clk);
             $display("Sent instruction: OPCODE=%s, rob_entry=%0d, PC=0x%h, alu_en=%0b, imm_val=%0d, dst_areg=%0d, dst_preg=%0d, br_taken=%0b, rs_entry=%0d, rs_full=%0b at Cycle %0d",
@@ -121,9 +121,9 @@ module tb_core;
             dut.disp_pkt[fu_idx]          = '0;
             dut.disp_valid[fu_idx]        = 1'b0;
             dut.dependency_mask[fu_idx]   = '0;
-            dut.disp_rob_if[0].dest_reg   = 'x;
-            dut.disp_rob_if[0].fire_valid = 1'b0;
-            dut.disp_rob_if[0].wb_en      = 'x;
+            dut.disp_rob_dst_areg[0]     = 'x;
+            dut.disp_rob_fire_valid[0]   = 1'b0;
+            dut.disp_rob_wb_en[0]        = 'x;
 
             @(negedge clk);
         end

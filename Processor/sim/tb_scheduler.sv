@@ -13,14 +13,16 @@ module tb_scheduler;
     logic [RS_ENTRIES-1:0]              local_ready_mask;
     logic [(RS_ENTRIES * NUM_FUS)-1:0]  global_ready_mask;
 
-    // Dispatch ports (replaces dispatch_scheduler_if)
+    // Dispatch ports
     logic                               disp_valid;
     disp_packet_t                       disp_pkt;
     logic [(RS_ENTRIES * NUM_FUS)-1:0]  dependency_mask;
     logic [$clog2(RS_ENTRIES)-1:0]      rs_entry_idx;
     logic                               rs_full;
 
-    scheduler_reg_read_if reg_read_if();
+    // Register Read ports
+    logic                               rr_fire_valid;
+    disp_packet_t                       rr_pkt;
     
     // Test tracking
     integer pass_count = 0;
@@ -37,7 +39,8 @@ module tb_scheduler;
         .dependency_mask_i(dependency_mask),
         .rs_entry_idx_o(rs_entry_idx),
         .rs_full_o(rs_full),
-        .reg_read_if(reg_read_if)
+        .rr_fire_valid_o(rr_fire_valid),
+        .rr_pkt_o(rr_pkt)
     );
     
     // Clock generation
@@ -151,7 +154,7 @@ module tb_scheduler;
             check_assertion("Grant should be valid",                          dut.grant_valid == 1'b1);
             check_assertion("Granted entry should not request anymore",       dut.reqs_out[granted_entry] == 1'b0);
             @(posedge clk); 
-            check_assertion("Fire valid should be asserted to reg read",      reg_read_if.fire_valid == 1'b1);
+            check_assertion("Fire valid should be asserted to reg read",      rr_fire_valid == 1'b1);
         end
     endtask
 
@@ -160,10 +163,10 @@ module tb_scheduler;
         begin
             $display("\n[Test 3] Register read receives correct payload");
             $display("Current Clock Cycle: %0d", cycle_count);
-            check_assertion("Payload dst_preg should match",  reg_read_if.sched_pkt.dst_preg  == 8'd10);
-            check_assertion("Payload src1_preg should match", reg_read_if.sched_pkt.src1_preg == 8'd20);
-            check_assertion("Payload src2_preg should match", reg_read_if.sched_pkt.src2_preg == 8'd30);
-            check_assertion("Payload PC should match",        reg_read_if.sched_pkt.pc        == 32'h1000);
+            check_assertion("Payload dst_preg should match",  rr_pkt.dst_preg  == 8'd10);
+            check_assertion("Payload src1_preg should match", rr_pkt.src1_preg == 8'd20);
+            check_assertion("Payload src2_preg should match", rr_pkt.src2_preg == 8'd30);
+            check_assertion("Payload PC should match",        rr_pkt.pc        == 32'h1000);
         end
     endtask
 

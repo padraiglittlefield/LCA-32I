@@ -2,12 +2,26 @@
 
 
 module register_read (
-    input clk,
-    input rst,
-    scheduler_reg_read_if.reg_read sched_if,
-    reg_read_reg_file_if.reg_read reg_file_if,
-    fwrd_reg_read_if.reg_read fwrd_if,
-    reg_read_execute_if.reg_read exec_if
+    input  logic                            clk,
+    input  logic                            rst,
+    // Scheduler
+    input  logic                            sched_fire_valid_i,
+    input  disp_packet_t                    sched_pkt_i,
+    // Register File
+    output logic [$clog2(NUM_PREGS)-1:0]    rf_src1_preg_o,
+    output logic [$clog2(NUM_PREGS)-1:0]    rf_src2_preg_o,
+    input  logic [31:0]                     rf_src1_val_i,
+    input  logic [31:0]                     rf_src2_val_i,
+    // Forwarding Unit
+    output logic [$clog2(NUM_PREGS)-1:0]    fwrd_src1_preg_o,
+    output logic [$clog2(NUM_PREGS)-1:0]    fwrd_src2_preg_o,
+    input  logic                            fwrd_src1_hit_i,
+    input  logic [31:0]                     fwrd_src1_val_i,
+    input  logic                            fwrd_src2_hit_i,
+    input  logic [31:0]                     fwrd_src2_val_i,
+    // Execute
+    output logic                            exec_fire_valid_o,
+    output exec_packet_t                    exec_pkt_o
 );
 
 disp_packet_t sched_pkt;
@@ -17,17 +31,17 @@ fwrd_mux src2_sel;
 logic [31:0] src1_val;
 logic [31:0] src2_val;
 
-assign sched_pkt = sched_if.sched_pkt;
+assign sched_pkt = sched_pkt_i;
 
 always_comb begin : FwrdMuxSel
     src1_sel = REG_FILE;
     src2_sel = REG_FILE;
 
-    if (fwrd_if.src1_fwrd_hit) begin
+    if (fwrd_src1_hit_i) begin
         src1_sel = FORWARD;
     end
 
-    if (fwrd_if.src2_fwrd_hit) begin
+    if (fwrd_src2_hit_i) begin
         src2_sel = FORWARD;
     end 
 end
@@ -35,25 +49,25 @@ end
 
 always_comb begin : AssignSrcVals
     case(src1_sel)
-        REG_FILE: exec_pkt.src1_val = reg_file_if.src1_val;
-        FORWARD: exec_pkt.src1_val = fwrd_if.src1_val;
+        REG_FILE: exec_pkt.src1_val = rf_src1_val_i;
+        FORWARD: exec_pkt.src1_val = fwrd_src1_val_i;
     endcase
 
     case(src2_sel)
-        REG_FILE: exec_pkt.src2_val = reg_file_if.src2_val;
-        FORWARD: exec_pkt.src2_val = fwrd_if.src2_val;
+        REG_FILE: exec_pkt.src2_val = rf_src2_val_i;
+        FORWARD: exec_pkt.src2_val = fwrd_src2_val_i;
     endcase
 end
 
 
 always_comb begin : RegRead
     // assign read ports for register file
-    reg_file_if.src1_reg = sched_pkt.src1_preg;
-    reg_file_if.src2_reg = sched_pkt.src2_preg;
+    rf_src1_preg_o = sched_pkt.src1_preg;
+    rf_src2_preg_o = sched_pkt.src2_preg;
 
     // send src regs to forwarding unit
-    fwrd_if.src1_reg = sched_pkt.src1_preg;
-    fwrd_if.src2_reg = sched_pkt.src2_preg;
+    fwrd_src1_preg_o = sched_pkt.src1_preg;
+    fwrd_src2_preg_o = sched_pkt.src2_preg;
 end
 
 
@@ -75,11 +89,11 @@ end
 
 always@(posedge clk) begin
     if(rst) begin
-        exec_if.fire_valid <= 1'b0;
-        exec_if.exec_pkt <= '0;
+        exec_fire_valid_o <= 1'b0;
+        exec_pkt_o <= '0;
     end else begin 
-        exec_if.fire_valid <= sched_if.fire_valid;
-        exec_if.exec_pkt <= exec_pkt;
+        exec_fire_valid_o <= sched_fire_valid_i;
+        exec_pkt_o <= exec_pkt;
     end
 end
 endmodule

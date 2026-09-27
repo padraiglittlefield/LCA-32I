@@ -32,19 +32,42 @@ module tb_register_read;
         $dumpvars(0,tb_register_read);
     end
 
-    // instantiate interfaces
-    scheduler_reg_read_if sched_if();
-    reg_read_reg_file_if reg_file_if();
-    fwrd_reg_read_if fwrd_if();
-    reg_read_execute_if exec_if();
+    // Scheduler
+    logic                           sched_fire_valid;
+    disp_packet_t                   sched_pkt;
+    // Register File
+    logic [$clog2(NUM_PREGS)-1:0]   rf_src1_preg;
+    logic [$clog2(NUM_PREGS)-1:0]   rf_src2_preg;
+    logic [31:0]                    rf_src1_val;
+    logic [31:0]                    rf_src2_val;
+    // Forwarding Unit
+    logic [$clog2(NUM_PREGS)-1:0]   fwrd_src1_preg;
+    logic [$clog2(NUM_PREGS)-1:0]   fwrd_src2_preg;
+    logic                           fwrd_src1_hit;
+    logic [31:0]                    fwrd_src1_val;
+    logic                           fwrd_src2_hit;
+    logic [31:0]                    fwrd_src2_val;
+    // Execute
+    logic                           exec_fire_valid;
+    exec_packet_t                   exec_pkt;
 
     register_read dut (
         .clk(clk),
         .rst(rst),
-        .sched_if(sched_if),
-        .reg_file_if(reg_file_if),
-        .fwrd_if(fwrd_if),
-        .exec_if(exec_if)
+        .sched_fire_valid_i(sched_fire_valid),
+        .sched_pkt_i(sched_pkt),
+        .rf_src1_preg_o(rf_src1_preg),
+        .rf_src2_preg_o(rf_src2_preg),
+        .rf_src1_val_i(rf_src1_val),
+        .rf_src2_val_i(rf_src2_val),
+        .fwrd_src1_preg_o(fwrd_src1_preg),
+        .fwrd_src2_preg_o(fwrd_src2_preg),
+        .fwrd_src1_hit_i(fwrd_src1_hit),
+        .fwrd_src1_val_i(fwrd_src1_val),
+        .fwrd_src2_hit_i(fwrd_src2_hit),
+        .fwrd_src2_val_i(fwrd_src2_val),
+        .exec_fire_valid_o(exec_fire_valid),
+        .exec_pkt_o(exec_pkt)
     );
 
     // ===== Helper Methods ==== //
@@ -53,17 +76,17 @@ module tb_register_read;
         begin
             clk = 0; 
             rst = 0;
-            // Initialize scheduler interface
-            sched_if.fire_valid = 0;
-            sched_if.sched_pkt = '0;
-            // Initialize register file interface (as if coming from reg file)
-            reg_file_if.src1_val = 32'h0;
-            reg_file_if.src2_val = 32'h0;
-            // Initialize forwarding interface (as if coming from forwarding unit)
-            fwrd_if.src1_fwrd_hit = 0;
-            fwrd_if.src2_fwrd_hit = 0;
-            fwrd_if.src1_val = 32'h0;
-            fwrd_if.src2_val = 32'h0;
+            // Scheduler inputs
+            sched_fire_valid = 0;
+            sched_pkt = '0;
+            // Register file inputs
+            rf_src1_val = 32'h0;
+            rf_src2_val = 32'h0;
+            // Forwarding unit inputs
+            fwrd_src1_hit = 0;
+            fwrd_src2_hit = 0;
+            fwrd_src1_val = 32'h0;
+            fwrd_src2_val = 32'h0;
   
         end
     endtask
@@ -106,13 +129,13 @@ module tb_register_read;
         input logic instr_valid
     );
         begin
-            sched_if.fire_valid = fire_valid_in;
-            sched_if.sched_pkt.pc = pc;
-            sched_if.sched_pkt.src1_preg = src1_preg;
-            sched_if.sched_pkt.src2_preg = src2_preg;
-            sched_if.sched_pkt.dst_preg = dst_preg;
-            sched_if.sched_pkt.imm_val = imm_val;
-            sched_if.sched_pkt.instr_valid = instr_valid;
+            sched_fire_valid = fire_valid_in;
+            sched_pkt.pc = pc;
+            sched_pkt.src1_preg = src1_preg;
+            sched_pkt.src2_preg = src2_preg;
+            sched_pkt.dst_preg = dst_preg;
+            sched_pkt.imm_val = imm_val;
+            sched_pkt.instr_valid = instr_valid;
             $display("Sent instruction: PC=0x%h, src1=%0d, src2=%0d, dst=%0d at Cycle %0d", 
                     pc, src1_preg, src2_preg, dst_preg, cycle_count);
         end
@@ -121,8 +144,8 @@ module tb_register_read;
     // Set register file response values
     task set_reg_file_values(input logic [31:0] src1_val, input logic [31:0] src2_val);
         begin
-            reg_file_if.src1_val = src1_val;
-            reg_file_if.src2_val = src2_val;
+            rf_src1_val = src1_val;
+            rf_src2_val = src2_val;
         end
     endtask
 
@@ -134,10 +157,10 @@ module tb_register_read;
         input logic [31:0] src2_fwd_val
     );
         begin
-            fwrd_if.src1_fwrd_hit = src1_hit;
-            fwrd_if.src2_fwrd_hit = src2_hit;
-            fwrd_if.src1_val = src1_fwd_val;
-            fwrd_if.src2_val = src2_fwd_val;
+            fwrd_src1_hit = src1_hit;
+            fwrd_src2_hit = src2_hit;
+            fwrd_src1_val = src1_fwd_val;
+            fwrd_src2_val = src2_fwd_val;
         end
     endtask
 
@@ -145,8 +168,8 @@ module tb_register_read;
     task test_reset_state();
         begin
             $display("\n[Test 1] Verify Reset State");
-            check_assertion("fire_valid is low after reset", exec_if.fire_valid == 1'b0);
-            check_assertion("exec_pkt cleared after reset", exec_if.exec_pkt == '0);
+            check_assertion("fire_valid is low after reset", exec_fire_valid == 1'b0);
+            check_assertion("exec_pkt cleared after reset", exec_pkt == '0);
         end
     endtask
 
@@ -159,14 +182,14 @@ module tb_register_read;
             @(negedge clk);
             @(posedge clk);
             #1;
-            check_assertion("reg_file_if.src1_reg == 5", reg_file_if.src1_reg == 5);
-            check_assertion("reg_file_if.src2_reg == 10", reg_file_if.src2_reg == 10);
-            check_assertion("exec_if.fire_valid == 1", exec_if.fire_valid == 1'b1);
-            check_assertion("exec_pkt.src1_val from reg file", exec_if.exec_pkt.src1_val == 32'hAAAA_AAAA);
-            check_assertion("exec_pkt.src2_val from reg file", exec_if.exec_pkt.src2_val == 32'hBBBB_BBBB);
-            check_assertion("exec_pkt.dst_preg == 15", exec_if.exec_pkt.dst_preg == 15);
-            check_assertion("exec_pkt.imm_val == 0x42", exec_if.exec_pkt.imm_val == 32'h42);
-            check_assertion("exec_pkt.pc == 0x1000", exec_if.exec_pkt.pc == 32'h1000);
+            check_assertion("rf_src1_preg == 5", rf_src1_preg == 5);
+            check_assertion("rf_src2_preg == 10", rf_src2_preg == 10);
+            check_assertion("exec_fire_valid == 1", exec_fire_valid == 1'b1);
+            check_assertion("exec_pkt.src1_val from reg file", exec_pkt.src1_val == 32'hAAAA_AAAA);
+            check_assertion("exec_pkt.src2_val from reg file", exec_pkt.src2_val == 32'hBBBB_BBBB);
+            check_assertion("exec_pkt.dst_preg == 15", exec_pkt.dst_preg == 15);
+            check_assertion("exec_pkt.imm_val == 0x42", exec_pkt.imm_val == 32'h42);
+            check_assertion("exec_pkt.pc == 0x1000", exec_pkt.pc == 32'h1000);
         end
     endtask
 
@@ -179,10 +202,10 @@ module tb_register_read;
             @(negedge clk);
             @(posedge clk);
             #1;
-            check_assertion("fwrd_if.src1_reg == 7", fwrd_if.src1_reg == 7);
-            check_assertion("fwrd_if.src2_reg == 8", fwrd_if.src2_reg == 8);
-            check_assertion("exec_pkt.src1_val forwarded", exec_if.exec_pkt.src1_val == 32'hDEAD_BEEF);
-            check_assertion("exec_pkt.src2_val from reg file", exec_if.exec_pkt.src2_val == 32'h2222_2222);
+            check_assertion("fwrd_src1_preg == 7", fwrd_src1_preg == 7);
+            check_assertion("fwrd_src2_preg == 8", fwrd_src2_preg == 8);
+            check_assertion("exec_pkt.src1_val forwarded", exec_pkt.src1_val == 32'hDEAD_BEEF);
+            check_assertion("exec_pkt.src2_val from reg file", exec_pkt.src2_val == 32'h2222_2222);
         end
     endtask
 
@@ -195,8 +218,8 @@ module tb_register_read;
             @(negedge clk);
             @(posedge clk);
             #1;
-            check_assertion("exec_pkt.src1_val from reg file", exec_if.exec_pkt.src1_val == 32'h3333_3333);
-            check_assertion("exec_pkt.src2_val forwarded", exec_if.exec_pkt.src2_val == 32'hCAFE_BABE);
+            check_assertion("exec_pkt.src1_val from reg file", exec_pkt.src1_val == 32'h3333_3333);
+            check_assertion("exec_pkt.src2_val forwarded", exec_pkt.src2_val == 32'hCAFE_BABE);
         end
     endtask
 
@@ -209,8 +232,8 @@ module tb_register_read;
             @(negedge clk);
             @(posedge clk);
             #1;
-            check_assertion("exec_pkt.src1_val forwarded", exec_if.exec_pkt.src1_val == 32'h1234_5678);
-            check_assertion("exec_pkt.src2_val forwarded", exec_if.exec_pkt.src2_val == 32'h9ABC_DEF0);
+            check_assertion("exec_pkt.src1_val forwarded", exec_pkt.src1_val == 32'h1234_5678);
+            check_assertion("exec_pkt.src2_val forwarded", exec_pkt.src2_val == 32'h9ABC_DEF0);
         end
     endtask
 
@@ -223,7 +246,7 @@ module tb_register_read;
             @(negedge clk);
             @(posedge clk);
             #1;
-            check_assertion("exec_if.fire_valid == 0", exec_if.fire_valid == 1'b0);
+            check_assertion("exec_fire_valid == 0", exec_fire_valid == 1'b0);
         end
     endtask
 
@@ -237,16 +260,16 @@ module tb_register_read;
             @(negedge clk);
             @(posedge clk);
             #1;
-            check_assertion("Instruction 1 src1_val", exec_if.exec_pkt.src1_val == 32'hAAAA_0000);
-            check_assertion("Instruction 1 PC", exec_if.exec_pkt.pc == 32'h2000);
+            check_assertion("Instruction 1 src1_val", exec_pkt.src1_val == 32'hAAAA_0000);
+            check_assertion("Instruction 1 PC", exec_pkt.pc == 32'h2000);
             // Second instruction
             set_reg_file_values(32'hCCCC_0000, 32'hDDDD_0000);
             send_instruction(1'b1, 32'h2004, 7, 8, 9, 32'hB0, 1'b1);
             @(negedge clk);
             @(posedge clk);
             #1;
-            check_assertion("Instruction 2 src1_val", exec_if.exec_pkt.src1_val == 32'hCCCC_0000);
-            check_assertion("Instruction 2 PC", exec_if.exec_pkt.pc == 32'h2004);
+            check_assertion("Instruction 2 src1_val", exec_pkt.src1_val == 32'hCCCC_0000);
+            check_assertion("Instruction 2 PC", exec_pkt.pc == 32'h2004);
         end
     endtask
 
@@ -259,12 +282,12 @@ module tb_register_read;
             @(negedge clk);
             @(posedge clk);
             #1;
-            check_assertion("dst_preg passed through", exec_if.exec_pkt.dst_preg == 27);
-            check_assertion("src1_preg passed through", exec_if.exec_pkt.src1_preg == 25);
-            check_assertion("src2_preg passed through", exec_if.exec_pkt.src2_preg == 26);
-            check_assertion("imm_val passed through", exec_if.exec_pkt.imm_val == 32'hDEAD_BEEF);
-            check_assertion("instr_valid passed through", exec_if.exec_pkt.instr_valid == 1'b1);
-            check_assertion("PC passed through", exec_if.exec_pkt.pc == 32'hFEED_FACE);
+            check_assertion("dst_preg passed through", exec_pkt.dst_preg == 27);
+            check_assertion("src1_preg passed through", exec_pkt.src1_preg == 25);
+            check_assertion("src2_preg passed through", exec_pkt.src2_preg == 26);
+            check_assertion("imm_val passed through", exec_pkt.imm_val == 32'hDEAD_BEEF);
+            check_assertion("instr_valid passed through", exec_pkt.instr_valid == 1'b1);
+            check_assertion("PC passed through", exec_pkt.pc == 32'hFEED_FACE);
         end
     endtask
 
@@ -277,8 +300,8 @@ module tb_register_read;
             @(negedge clk);
             @(posedge clk);
             #1;
-            check_assertion("reg_file_if.src1_reg == 0", reg_file_if.src1_reg == 0);
-            check_assertion("reg_file_if.src2_reg == 0", reg_file_if.src2_reg == 0);
+            check_assertion("rf_src1_preg == 0", rf_src1_preg == 0);
+            check_assertion("rf_src2_preg == 0", rf_src2_preg == 0);
         end
     endtask
 

@@ -33,23 +33,39 @@ module tb_fwrd_unit;
     end
 
     
-    fwrd_reg_read_if reg_read_if();
-    execute_fwrd_if exec_if[NUM_FUS]();
- 
+    // Register Read
+    logic [$clog2(NUM_PREGS)-1:0]   src1_preg;
+    logic [$clog2(NUM_PREGS)-1:0]   src2_preg;
+    logic                           src1_hit;
+    logic [31:0]                    src1_val;
+    logic                           src2_hit;
+    logic [31:0]                    src2_val;
+    // Execute
+    logic                           ex_valid    [NUM_FUS];
+    logic [$clog2(NUM_PREGS)-1:0]   ex_dst_preg [NUM_FUS];
+    logic [31:0]                    ex_val      [NUM_FUS];
 
     fwrd_unit dut (
-        .reg_read_if(reg_read_if),
-        .exec_if(exec_if)
+        .src1_preg_i(src1_preg),
+        .src2_preg_i(src2_preg),
+        .src1_hit_o(src1_hit),
+        .src1_val_o(src1_val),
+        .src2_hit_o(src2_hit),
+        .src2_val_o(src2_val),
+        .ex_valid_i(ex_valid),
+        .ex_dst_preg_i(ex_dst_preg),
+        .ex_val_i(ex_val)
     );
 
     // ===== Helper Methods ==== //
 
     task init_signals();
         begin
-            reg_read_if.src1_fwrd_hit = '0;
-            reg_read_if.src1_val = '0;
-            reg_read_if.src2_fwrd_hit = '0;
-            reg_read_if.src2_val = '0; 
+            for (int i = 0; i < NUM_FUS; i++) begin
+                ex_valid[i]    = 1'b0;
+                ex_dst_preg[i] = '0;
+                ex_val[i]      = '0;
+            end
         end
     endtask
 
@@ -85,22 +101,22 @@ module tb_fwrd_unit;
     task test_fwrd_miss();
         begin
             $display("\n[Test 1] Verify Forward Miss");
-            exec_if[0].dst_reg = 21;
-            exec_if[0].ex_valid = 1'b1;
-            exec_if[0].ex_val = 21;
+            ex_dst_preg[0] = 21;
+            ex_valid[0] = 1'b1;
+            ex_val[0] = 21;
 
-            reg_read_if.src1_reg = 9;
-            reg_read_if.src2_reg = 10;
+            src1_preg = 9;
+            src2_preg = 10;
             @(negedge clk);
 
             $display("Foward Unit Output: src1 hit: %b, src1 val: %0d, src2 Hit: %b, src1 val: %0d",
-            reg_read_if.src1_fwrd_hit,
-            reg_read_if.src1_val,
-            reg_read_if.src2_fwrd_hit,
-            reg_read_if.src2_val);
+            src1_hit,
+            src1_val,
+            src2_hit,
+            src2_val);
 
-            check_assertion("Src1 should receive forward miss", reg_read_if.src1_fwrd_hit == 1'b0);
-            check_assertion("Src2 should receive forward miss", reg_read_if.src2_fwrd_hit == 1'b0);
+            check_assertion("Src1 should receive forward miss", src1_hit == 1'b0);
+            check_assertion("Src2 should receive forward miss", src2_hit == 1'b0);
         end
     endtask
 
@@ -108,23 +124,23 @@ module tb_fwrd_unit;
     task test_src1_hit();
         begin
             $display("\n[Test 2] Verify Source 1 Hit");
-            exec_if[0].dst_reg = 10;
-            exec_if[0].ex_valid = 1'b1;
-            exec_if[0].ex_val = 21;
+            ex_dst_preg[0] = 10;
+            ex_valid[0] = 1'b1;
+            ex_val[0] = 21;
 
-            reg_read_if.src1_reg = 10;
-            reg_read_if.src2_reg = 19;
+            src1_preg = 10;
+            src2_preg = 19;
             @(negedge clk);
                         
             $display("Foward Unit Output: src1 hit: %b, src1 val: %0d, src2 Hit: %b, src1 val: %0d",
-            reg_read_if.src1_fwrd_hit,
-            reg_read_if.src1_val,
-            reg_read_if.src2_fwrd_hit,
-            reg_read_if.src2_val);
+            src1_hit,
+            src1_val,
+            src2_hit,
+            src2_val);
 
-            check_assertion("Src1 should receive forward hit", reg_read_if.src1_fwrd_hit == 1'b1);
-            check_assertion("Correct value should have been forwarded", reg_read_if.src1_val == 21);
-            check_assertion("Src2 should receive forward miss", reg_read_if.src2_fwrd_hit == 1'b0);
+            check_assertion("Src1 should receive forward hit", src1_hit == 1'b1);
+            check_assertion("Correct value should have been forwarded", src1_val == 21);
+            check_assertion("Src2 should receive forward miss", src2_hit == 1'b0);
         end
     endtask
 
@@ -132,23 +148,23 @@ module tb_fwrd_unit;
     task test_src2_hit();
         begin
             $display("\n[Test 3] Verify Source 2 Hit");
-            exec_if[0].dst_reg = 10;
-            exec_if[0].ex_valid = 1'b1;
-            exec_if[0].ex_val = 21;
+            ex_dst_preg[0] = 10;
+            ex_valid[0] = 1'b1;
+            ex_val[0] = 21;
 
-            reg_read_if.src1_reg = 19;
-            reg_read_if.src2_reg = 10;
+            src1_preg = 19;
+            src2_preg = 10;
             @(negedge clk);
                         
             $display("Foward Unit Output: src1 hit: %b, src1 val: %0d, src2 Hit: %b, src1 val: %0d",
-            reg_read_if.src1_fwrd_hit,
-            reg_read_if.src1_val,
-            reg_read_if.src2_fwrd_hit,
-            reg_read_if.src2_val);
+            src1_hit,
+            src1_val,
+            src2_hit,
+            src2_val);
 
-            check_assertion("Src1 should receive forward miss", reg_read_if.src1_fwrd_hit == 1'b0);
-            check_assertion("Correct value should have been forwarded", reg_read_if.src2_val == 21);
-            check_assertion("Src2 should receive forward hit", reg_read_if.src2_fwrd_hit == 1'b1);
+            check_assertion("Src1 should receive forward miss", src1_hit == 1'b0);
+            check_assertion("Correct value should have been forwarded", src2_val == 21);
+            check_assertion("Src2 should receive forward hit", src2_hit == 1'b1);
         end
     endtask
 
@@ -156,28 +172,28 @@ module tb_fwrd_unit;
     task test_both_hit_different_fus();
         begin
          $display("\n[Test 4] Verify Both Sources can Hit on different Functional Units");
-            exec_if[1].dst_reg = 6;
-            exec_if[1].ex_valid = 1'b1;
-            exec_if[1].ex_val = 32;
+            ex_dst_preg[1] = 6;
+            ex_valid[1] = 1'b1;
+            ex_val[1] = 32;
 
-            exec_if[3].dst_reg = 7;
-            exec_if[3].ex_valid = 1'b1;
-            exec_if[3].ex_val = 64;
+            ex_dst_preg[3] = 7;
+            ex_valid[3] = 1'b1;
+            ex_val[3] = 64;
 
-            reg_read_if.src1_reg = 6;
-            reg_read_if.src2_reg = 7;
+            src1_preg = 6;
+            src2_preg = 7;
             @(negedge clk);
                         
             $display("Foward Unit Output: src1 hit: %b, src1 val: %0d, src2 Hit: %b, src2 val: %0d",
-            reg_read_if.src1_fwrd_hit,
-            reg_read_if.src1_val,
-            reg_read_if.src2_fwrd_hit,
-            reg_read_if.src2_val);
+            src1_hit,
+            src1_val,
+            src2_hit,
+            src2_val);
 
-            check_assertion("Src1 should receive forward hit", reg_read_if.src1_fwrd_hit == 1'b1);
-            check_assertion("Correct value should have been forwarded to src1", reg_read_if.src1_val == 32);
-            check_assertion("Src2 should receive forward hit", reg_read_if.src2_fwrd_hit == 1'b1);
-            check_assertion("Correct value should have been forwarded to src2", reg_read_if.src2_val == 64);
+            check_assertion("Src1 should receive forward hit", src1_hit == 1'b1);
+            check_assertion("Correct value should have been forwarded to src1", src1_val == 32);
+            check_assertion("Src2 should receive forward hit", src2_hit == 1'b1);
+            check_assertion("Correct value should have been forwarded to src2", src2_val == 64);
         end
     endtask
 
@@ -185,24 +201,24 @@ module tb_fwrd_unit;
     task test_both_hit_same_fus();
         begin
          $display("\n[Test 5] Verify Both Sources can Hit on the same Functional Units");
-            exec_if[2].dst_reg = 8;
-            exec_if[2].ex_valid = 1'b1;
-            exec_if[2].ex_val = 16;
+            ex_dst_preg[2] = 8;
+            ex_valid[2] = 1'b1;
+            ex_val[2] = 16;
 
-            reg_read_if.src1_reg = 8;
-            reg_read_if.src2_reg = 8;
+            src1_preg = 8;
+            src2_preg = 8;
             @(negedge clk);
                         
             $display("Foward Unit Output: src1 hit: %b, src1 val: %0d, src2 Hit: %b, src1 val: %0d",
-            reg_read_if.src1_fwrd_hit,
-            reg_read_if.src1_val,
-            reg_read_if.src2_fwrd_hit,
-            reg_read_if.src2_val);
+            src1_hit,
+            src1_val,
+            src2_hit,
+            src2_val);
 
-            check_assertion("Src1 should receive forward hit", reg_read_if.src1_fwrd_hit == 1'b1);
-            check_assertion("Correct value should have been forwarded to src1", reg_read_if.src1_val == 16);
-            check_assertion("Src2 should receive forward hit", reg_read_if.src2_fwrd_hit == 1'b1);
-            check_assertion("Correct value should have been forwarded to src2", reg_read_if.src1_val == 16);
+            check_assertion("Src1 should receive forward hit", src1_hit == 1'b1);
+            check_assertion("Correct value should have been forwarded to src1", src1_val == 16);
+            check_assertion("Src2 should receive forward hit", src2_hit == 1'b1);
+            check_assertion("Correct value should have been forwarded to src2", src1_val == 16);
         end
     endtask
 

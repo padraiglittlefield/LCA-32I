@@ -1,7 +1,8 @@
 module execute_agu (
     input   logic   clk,
     input   logic   rst,
-    reg_read_execute_if.execute reg_read_if,
+    input   logic                            rr_fire_valid_i,
+    input   exec_packet_t                    rr_pkt_i,
     output  logic                            lsu_vld_o,
     output  logic                            lsu_is_store_o,
     output  logic [31:0]                     lsu_addr_o,
@@ -22,7 +23,7 @@ logic is_store;
 
 
 // ==== Register Read ==== //
-assign exec_pkt = reg_read_if.exec_pkt; // collect instr packet from reg read pipeline register
+assign exec_pkt = rr_pkt_i; // collect instr packet from reg read pipeline register
 
 always_comb begin
     case(exec_pkt.opcode)
@@ -45,7 +46,7 @@ agu agu (
 
 // ==== Send Results to LSU ==== //
 always_comb begin
-    lsu_vld_o           = reg_read_if.fire_valid & addr_valid;
+    lsu_vld_o           = rr_fire_valid_i & addr_valid;
     lsu_is_store_o      = is_store;
     lsu_addr_o          = addr_out;
     lsu_store_data_o    = exec_pkt.src2_val;

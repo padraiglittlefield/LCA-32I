@@ -15,8 +15,9 @@ module scheduler (
     input  logic [(RS_ENTRIES * NUM_FUS)-1:0]       dependency_mask_i,
     output logic [$clog2(RS_ENTRIES)-1:0]           rs_entry_idx_o,
     output logic                                    rs_full_o,
-    // execute_scheduler_if removed
-    scheduler_reg_read_if.scheduler                 reg_read_if
+    // Register Read ports
+    output logic                                    rr_fire_valid_o,
+    output disp_packet_t                            rr_pkt_o
 );
 
     logic [$clog2(RS_ENTRIES)-1:0] grant;
@@ -90,11 +91,11 @@ module scheduler (
     /* ===== Register Read Pipeline Register ===== */
     always_ff @(posedge clk) begin
         if (rst) begin
-            reg_read_if.sched_pkt  <= 'x;
-            reg_read_if.fire_valid <= '0;
+            rr_pkt_o        <= 'x;
+            rr_fire_valid_o <= '0;
         end else begin
-            reg_read_if.sched_pkt  <= payload_ram_out;
-            reg_read_if.fire_valid <= grant_valid;
+            rr_pkt_o        <= payload_ram_out;
+            rr_fire_valid_o <= grant_valid;
         end
     end
 
