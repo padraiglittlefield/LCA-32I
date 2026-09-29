@@ -1,7 +1,10 @@
-# Verilator build output
-obj_dir/
+# Build output (sim binaries, waveforms, logs, syn/apr runs)
+build/
 
-# Waveforms and sim logs
+# Stray waveforms and logs
 *.vcd
 *.fst
 *.log
+
+# Editor/drawio backups
+*.bkp
