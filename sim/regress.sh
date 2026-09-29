@@ -11,6 +11,16 @@ TIMEOUT=${REGRESS_TIMEOUT:-60}
 
 RED=$'\033[31m'; GRN=$'\033[32m'; YEL=$'\033[33m'; BLD=$'\033[1m'; RST=$'\033[0m'
 
+# Ctrl+C: kill any running verilator/sim children and stop the whole run
+on_interrupt() {
+    trap '' INT TERM
+    echo ""
+    echo "${YEL}Interrupted${RST}"
+    kill -TERM 0 2>/dev/null
+    exit 130
+}
+trap on_interrupt INT TERM
+
 if [ $# -gt 0 ]; then
     TARGETS=("$@")
 else
@@ -48,7 +58,7 @@ for t in "${TARGETS[@]}"; do
     fi
 
     # Run from inside the build dir so waveform dumps land there
-    ( cd "$mdir" && timeout "$TIMEOUT" "./V$tb" ) >> "$log" 2>&1
+    ( cd "$mdir" && timeout --foreground "$TIMEOUT" "./V$tb" ) >> "$log" 2>&1
     rc=$?
 
     clean=$(sed 's/\x1b\[[0-9;]*m//g' "$log")

@@ -1,6 +1,15 @@
 # Verilator Makefile for SystemVerilog simulation
 # Run from sim/ (or: make -C sim ...). Sources come from filelists/rtl.f.
 
+# Default waveform format for the generic targets (build, view, compile, run,
+# waveform). Set to vcd or fst here, or override per run:
+#   make view target=dispatch TRACE_FORMAT=fst
+TRACE_FORMAT ?= vcd
+
+ifeq ($(filter $(TRACE_FORMAT),vcd fst),)
+$(error TRACE_FORMAT must be vcd or fst (got '$(TRACE_FORMAT)'))
+endif
+
 # Directories
 ROOT      := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 TB_DIR    := $(ROOT)/tb
@@ -24,9 +33,6 @@ RTL_SOURCES := $(addprefix $(ROOT)/,$(shell grep -v '^\s*\#' $(RTL_F) | grep -v 
 # GTKWave for viewing waveforms
 GTKWAVE := gtkwave
 
-# Trace format selection (default to FST)
-TRACE_FORMAT ?= fst
-
 .PHONY: all clean view help build_vcd build_fst view_vcd view_fst regress filelist
 
 # Default target
@@ -38,9 +44,10 @@ all:
 	@echo "  make build_fst target=dispatch  - Build with FST and run only"
 	@echo "  make build_vcd target=dispatch  - Build with VCD and run only"
 	@echo ""
-	@echo "Or use the generic commands:"
-	@echo "  make view target=dispatch       - Uses FST by default"
-	@echo "  make view target=dispatch TRACE_FORMAT=vcd  - Force VCD format"
+	@echo "Or use the generic commands (format from TRACE_FORMAT, default $(TRACE_FORMAT)):"
+	@echo "  make view target=dispatch       - Build, run, and view"
+	@echo "  make build target=dispatch      - Build and run only"
+	@echo "  make view target=dispatch TRACE_FORMAT=fst  - Override the format"
 
 # Check if target is specified
 check_target:
@@ -121,13 +128,13 @@ waveform_vcd:
 		echo "Warning: No VCD file found."; \
 	fi
 
-# === Generic targets (default to FST) ===
-view: view_fst
-build: build_fst
+# === Generic targets (format chosen by TRACE_FORMAT) ===
+view: view_$(TRACE_FORMAT)
+build: build_$(TRACE_FORMAT)
 
-compile: compile_fst
-run: run_fst
-waveform: waveform_fst
+compile: compile_$(TRACE_FORMAT)
+run: run_$(TRACE_FORMAT)
+waveform: waveform_$(TRACE_FORMAT)
 
 # Compile only (no run)
 compile-only: check_target compile
@@ -163,9 +170,9 @@ help:
 	@echo "  make view_vcd target=<MODULE>   - Compile, run, and view VCD waveform"
 	@echo "  make build_vcd target=<MODULE>  - Compile and run (no viewer)"
 	@echo ""
-	@echo "Generic targets (default to FST):"
-	@echo "  make view target=<MODULE>       - Same as view_fst"
-	@echo "  make build target=<MODULE>      - Same as build_fst"
+	@echo "Generic targets (TRACE_FORMAT=$(TRACE_FORMAT); set in Makefile or on the command line):"
+	@echo "  make view target=<MODULE>       - Same as view_$(TRACE_FORMAT)"
+	@echo "  make build target=<MODULE>      - Same as build_$(TRACE_FORMAT)"
 	@echo ""
 	@echo "Other targets:"
 	@echo "  make compile-only target=<MODULE> - Only compile"
