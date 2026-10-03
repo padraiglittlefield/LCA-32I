@@ -3,6 +3,7 @@
 import CORE_PKG::*;
 
 module tb_reorder_buffer;
+    `include "tb_test_select.svh"
 
     // ===== Testbench Setup ===== //
 
@@ -29,7 +30,7 @@ module tb_reorder_buffer;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_reorder_buffer.vcd");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_reorder_buffer);
     end
 
@@ -507,22 +508,21 @@ module tb_reorder_buffer;
     initial begin
         init_signals();
         $display("=== Reorder Buffer Testbench ===");
-        reset_dut();
 
-        test_reset_state();                 reset_dut();
-        test_alloc_indices();               reset_dut();
-        test_non_contiguous_alloc();        reset_dut();
-        test_single_retire();               reset_dut();
-        test_in_order_retire();             reset_dut();
-        test_retire_width_limit();          reset_dut();
-        test_no_wb_entry();                 reset_dut();
-        test_parallel_completions();        reset_dut();
-        test_full();                        reset_dut();
-        test_dual_alloc_one_slot_left();    reset_dut();
-        test_wraparound();                  reset_dut();
-        test_flush_en_clears();             reset_dut();
-        test_mispredict_flush();            reset_dut();
-        test_exception_stops_retire();
+        `RUN_TEST(test_reset_state)
+        `RUN_TEST(test_alloc_indices)
+        `RUN_TEST(test_non_contiguous_alloc)
+        `RUN_TEST(test_single_retire)
+        `RUN_TEST(test_in_order_retire)
+        `RUN_TEST(test_retire_width_limit)
+        `RUN_TEST(test_no_wb_entry)
+        `RUN_TEST(test_parallel_completions)
+        `RUN_TEST(test_full)
+        `RUN_TEST(test_dual_alloc_one_slot_left)
+        `RUN_TEST(test_wraparound)
+        `RUN_TEST(test_flush_en_clears)
+        `RUN_TEST(test_mispredict_flush)
+        `RUN_TEST(test_exception_stops_retire)
 
         repeat(5) @(posedge clk);
 

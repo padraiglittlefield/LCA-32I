@@ -2,6 +2,7 @@
 
 import CORE_PKG::*;
 module tb_load_store_unit;
+    `include "tb_test_select.svh"
     // ===== Testbench Setup ===== //
 
 
@@ -34,7 +35,7 @@ module tb_load_store_unit;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_load_store_unit.fst");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_load_store_unit);
     end
 
@@ -746,28 +747,26 @@ module tb_load_store_unit;
         init_signals();
         sdq_tail = '0;
         $display("=== Load Store Unit Testbench ===");
-        reset_dut();
 
-        // each test starts from a fresh reset so one RTL failure can't cascade
-        test_reset_state();                         reset_dut();
-        test_dispatch_indices();                    reset_dut();
-        test_load_miss_cold();                      reset_dut();
-        test_load_hit_after_fill();                 reset_dut();
-        test_load_waits_for_address();              reset_dut();
-        test_multiple_outstanding_misses();         reset_dut();
-        test_store_to_load_forwarding();            reset_dut();
-        test_forward_youngest_older_store();        reset_dut();
-        test_no_forward_from_younger_store();       reset_dut();
-        test_no_forward_different_address();        reset_dut();
-        test_ambiguous_store_stall();               reset_dut();
-        test_ambiguous_store_resolves_to_match();   reset_dut();
-        test_uncommitted_store_stays_in_sdq();      reset_dut();
-        test_committed_store_hit_writeback();       reset_dut();
-        test_committed_store_miss_writeback();      reset_dut();
-        test_load_after_committed_store();          reset_dut();
-        test_ldq_full();                            reset_dut();
-        test_sdq_full();                            reset_dut();
-        test_flush_squashes_loads();
+        `RUN_TEST(test_reset_state)
+        `RUN_TEST(test_dispatch_indices)
+        `RUN_TEST(test_load_miss_cold)
+        `RUN_TEST(test_load_hit_after_fill)
+        `RUN_TEST(test_load_waits_for_address)
+        `RUN_TEST(test_multiple_outstanding_misses)
+        `RUN_TEST(test_store_to_load_forwarding)
+        `RUN_TEST(test_forward_youngest_older_store)
+        `RUN_TEST(test_no_forward_from_younger_store)
+        `RUN_TEST(test_no_forward_different_address)
+        `RUN_TEST(test_ambiguous_store_stall)
+        `RUN_TEST(test_ambiguous_store_resolves_to_match)
+        `RUN_TEST(test_uncommitted_store_stays_in_sdq)
+        `RUN_TEST(test_committed_store_hit_writeback)
+        `RUN_TEST(test_committed_store_miss_writeback)
+        `RUN_TEST(test_load_after_committed_store)
+        `RUN_TEST(test_ldq_full)
+        `RUN_TEST(test_sdq_full)
+        `RUN_TEST(test_flush_squashes_loads)
 
         repeat(5) @(posedge clk);
 

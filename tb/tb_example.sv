@@ -5,6 +5,7 @@ import CORE_PKG::*;
     Template for my personal testbenches, with clock and check_assert
 */
 module tb_example;
+    `include "tb_test_select.svh"
     localparam CLK_PERIOD = 20;
     localparam DUTY_CYCLE = 0.5;
     
@@ -40,7 +41,7 @@ module tb_example;
     
     // Waveform dump
     initial begin
-        $dumpfile("tb_EXAMPLE.vcd");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0, tb_EXAMPLE);
     end
     
@@ -49,7 +50,13 @@ module tb_example;
         begin
             clk = 0;
             rst = 1;
-            
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             // Init DUT input signals
         end
     endtask
@@ -72,6 +79,7 @@ module tb_example;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -112,9 +120,8 @@ module tb_example;
         init_signals();
         
         $display("=== Example Module Testbench ===");
-        reset_dut();
         
-        // call tests here
+        // call tests here, e.g. `RUN_TEST(test_name) (resets the DUT before each test)
         
         repeat(5) @(negedge clk);
         

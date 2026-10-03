@@ -2,6 +2,7 @@
 
 import CORE_PKG::*;
 module tb_cache_controller;
+    `include "tb_test_select.svh"
 
     // ===== Testbench Setup ===== //
 
@@ -32,7 +33,7 @@ module tb_cache_controller;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_cache_controller.fst");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_cache_controller);
     end
 
@@ -590,23 +591,21 @@ module tb_cache_controller;
     initial begin
         init_signals();
         $display("=== Cache Controller Testbench ===");
-        reset_dut();
 
-        // each test starts from a fresh reset so one RTL failure can't cascade
-        test_reset_state();                     reset_dut();
-        test_load_miss_cold();                  reset_dut();
-        test_miss_word_select();                reset_dut();
-        test_load_hit();                        reset_dut();
-        test_back_to_back_hits();               reset_dut();
-        test_store_hit_then_load();             reset_dut();
-        test_store_miss_then_load();            reset_dut();
-        test_dirty_eviction();                  reset_dut();
-        test_clean_eviction();                  reset_dut();
-        test_repair_stall();                    reset_dut();
-        test_hit_under_miss();                  reset_dut();
-        test_multiple_outstanding_misses();     reset_dut();
-        test_secondary_miss_same_block();       reset_dut();
-        test_mshr_full_stall();
+        `RUN_TEST(test_reset_state)
+        `RUN_TEST(test_load_miss_cold)
+        `RUN_TEST(test_miss_word_select)
+        `RUN_TEST(test_load_hit)
+        `RUN_TEST(test_back_to_back_hits)
+        `RUN_TEST(test_store_hit_then_load)
+        `RUN_TEST(test_store_miss_then_load)
+        `RUN_TEST(test_dirty_eviction)
+        `RUN_TEST(test_clean_eviction)
+        `RUN_TEST(test_repair_stall)
+        `RUN_TEST(test_hit_under_miss)
+        `RUN_TEST(test_multiple_outstanding_misses)
+        `RUN_TEST(test_secondary_miss_same_block)
+        `RUN_TEST(test_mshr_full_stall)
 
         repeat(5) @(posedge clk);
 

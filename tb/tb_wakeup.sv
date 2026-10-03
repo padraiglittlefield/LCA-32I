@@ -2,6 +2,7 @@
 import CORE_PKG::*;
 
 module tb_wakeup;
+    `include "tb_test_select.svh"
     localparam CLK_PERIOD = 20;
     localparam DUTY_CYCLE = 0.5;
     
@@ -54,7 +55,7 @@ module tb_wakeup;
     
     // Waveform dump
     initial begin
-        $dumpfile("tb_wakeup.vcd");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0, tb_wakeup);
     end
     
@@ -63,6 +64,13 @@ module tb_wakeup;
         begin
             clk = 0;
             rst = 1;
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             disp_valid = 0;
             dependency_mask = '0;
             grant = 0;
@@ -91,6 +99,7 @@ module tb_wakeup;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -156,12 +165,53 @@ module tb_wakeup;
         end
     endtask
     
+    // ===== Test Setup Helpers ===== //
+    // Shared by the tests that need the same starting state, so each test can
+    // build it from reset instead of relying on the previous test.
+
+    // Dispatch the dependency-free entry that tests 1-3 grant and retire
+    task dispatch_no_deps_entry();
+        begin
+            dispatch_entry('0);
+            @(posedge clk);
+        end
+    endtask
+
+    // Dispatch an entry waiting on two producers (tests 4-5)
+    task dispatch_dep_entry();
+        begin
+            dispatch_entry({{(RS_ENTRIES*NUM_FUS-2){1'b0}}, 2'b11});
+        end
+    endtask
+
+    // Dispatch dependency-free entries until the RS is full
+    task fill_rs();
+        begin
+            for (int i = 0; i < RS_ENTRIES; i++) begin
+                if (!full_out) begin
+                    dispatch_entry('0);
+                end
+            end
+        end
+    endtask
+
+    // Grant and retire up to n requesting entries
+    task grant_retire(input int n);
+        begin
+            for (int i = 0; i < n; i++) begin
+                if (reqs != 0) begin
+                    grant_entry();
+                    retire_entry_task(grant);
+                end
+            end
+        end
+    endtask
+
     // Test 1: Dispatch with no dependencies
     task test_dispatch_no_deps();
         begin
             $display("\n[Test 1] Dispatch entry with no dependencies");
-            dispatch_entry('0);
-            @(posedge clk);
+            dispatch_no_deps_entry();
             check_assertion("Entry should be valid after dispatch", dut.entry_valid[0] == 1'b1);
             check_assertion("Should have request after dispatch with no deps", reqs[0] == 1'b1);
         end
@@ -172,6 +222,7 @@ module tb_wakeup;
         logic [$clog2(RS_ENTRIES)-1:0] granted_entry;
         begin
             $display("\n[Test 2] Grant ready entry");
+            dispatch_no_deps_entry();
             granted_entry = grant;
             grant_entry();
             check_assertion("Granted entry should not request anymore", reqs[granted_entry] == 1'b0);
@@ -184,6 +235,8 @@ module tb_wakeup;
         logic [$clog2(RS_ENTRIES)-1:0] retired_entry;
         begin
             $display("\n[Test 3] Retire completed entry");
+            dispatch_no_deps_entry();
+            grant_entry();
             retired_entry = grant;
             retire_entry_task(grant);
             check_assertion("Retired entry should be invalid", dut.entry_valid[retired_entry] == 1'b0);
@@ -197,7 +250,7 @@ module tb_wakeup;
         begin
             $display("\n[Test 4] Dispatch entry with dependencies");
             dispatched_entry = free_entry_out;
-            dispatch_entry({{(RS_ENTRIES*NUM_FUS-2){1'b0}}, 2'b11});
+            dispatch_dep_entry();
             $display("  Reqs (blocked by deps): %b", reqs);
             check_assertion("Entry with dependencies should not request", reqs[dispatched_entry] == 1'b0);
             check_assertion("Dependency matrix should be non-zero", dut.dependency_matrix_row[dispatched_entry] != '0);
@@ -208,6 +261,8 @@ module tb_wakeup;
     task test_clear_dependencies();
         logic [$clog2(RS_ENTRIES)-1:0] dep_entry;
         begin
+            dispatch_dep_entry();
+
             // Find the entry with dependencies
             for (int i = 0; i < RS_ENTRIES; i++) begin
                 if (dut.entry_valid[i] && dut.dependency_matrix_row[i] != '0) begin
@@ -235,11 +290,7 @@ module tb_wakeup;
         integer valid_count;
         begin
             $display("\n[Test 7] Fill reservation station");
-            for (int i = 0; i < RS_ENTRIES; i++) begin
-                if (!full_out) begin
-                    dispatch_entry('0);
-                end
-            end
+            fill_rs();
             $display("  RS Full: %0b, Reqs: %b", full_out, reqs);
             
             valid_count = 0;
@@ -256,6 +307,7 @@ module tb_wakeup;
         integer valid_count_before, valid_count_after;
         begin
             $display("\n[Test 8] Attempt dispatch when full");
+            fill_rs();
             
             valid_count_before = 0;
             for (int i = 0; i < RS_ENTRIES; i++) begin
@@ -283,12 +335,8 @@ module tb_wakeup;
     task test_grant_retire_multiple();
         begin
             $display("\n[Test 9] Grant and retire multiple entries to free space");
-            for (int i = 0; i < (RS_ENTRIES/2); i++) begin
-                if (reqs != 0) begin
-                    grant_entry();
-                    retire_entry_task(grant);
-                end
-            end
+            fill_rs();
+            grant_retire(RS_ENTRIES/2);
             $display("  RS Full after retires: %0b", full_out);
             check_assertion("RS should no longer be full", full_out == 1'b0);
         end
@@ -299,6 +347,8 @@ module tb_wakeup;
         logic [$clog2(RS_ENTRIES)-1:0] new_entry;
         begin
             $display("\n[Test 10] Dispatch after freeing entries");
+            fill_rs();
+            grant_retire(RS_ENTRIES/2);
             new_entry = free_entry_out;
             dispatch_entry('0);
             check_assertion("Should successfully dispatch to freed entry", dut.entry_valid[new_entry] == 1'b1);
@@ -313,17 +363,15 @@ module tb_wakeup;
         $display("=== Wakeup Module Testbench ===");
         $display("RS_ENTRIES: %0d, NUM_FUS: %0d", RS_ENTRIES, NUM_FUS);
         
-        reset_dut();
-        
-        test_dispatch_no_deps();
-        test_grant_ready();
-        test_retire();
-        test_dispatch_with_deps();
-        test_clear_dependencies();
-        test_fill_rs();
-        test_dispatch_when_full();
-        test_grant_retire_multiple();
-        test_dispatch_after_free();
+        `RUN_TEST(test_dispatch_no_deps)
+        `RUN_TEST(test_grant_ready)
+        `RUN_TEST(test_retire)
+        `RUN_TEST(test_dispatch_with_deps)
+        `RUN_TEST(test_clear_dependencies)
+        `RUN_TEST(test_fill_rs)
+        `RUN_TEST(test_dispatch_when_full)
+        `RUN_TEST(test_grant_retire_multiple)
+        `RUN_TEST(test_dispatch_after_free)
         
         repeat(5) @(negedge clk);
         

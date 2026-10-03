@@ -2,6 +2,7 @@
 import CORE_PKG::*;
 
 module tb_scheduler;
+    `include "tb_test_select.svh"
     localparam CLK_PERIOD = 20;
     localparam DUTY_CYCLE = 0.5;
     
@@ -54,7 +55,7 @@ module tb_scheduler;
     
     // Waveform dump
     initial begin
-        $dumpfile("tb_scheduler.vcd");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0, tb_scheduler);
     end
     
@@ -63,6 +64,13 @@ module tb_scheduler;
         begin
             clk         = 0;
             rst         = 1;
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             disp_valid  = 0;
             disp_pkt    = '0;
             dependency_mask  = '0;
@@ -88,6 +96,7 @@ module tb_scheduler;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -132,12 +141,54 @@ module tb_scheduler;
         end
     endtask
 
+    // ===== Test Setup Helpers ===== //
+    // Shared by the tests that need the same starting state, so each test can
+    // build it from reset instead of relying on the previous test.
+
+    // Dispatch the dependency-free entry that tests 1-3 follow through select and reg read
+    task dispatch_no_deps_entry();
+        begin
+            dispatch_entry('0, 8'd10, 8'd20, 8'd30, 32'h1000, 32'h0);
+            @(posedge clk);
+        end
+    endtask
+
+    logic [$clog2(RS_ENTRIES)-1:0] test5_dispatched_entry;
+
+    // Dispatch the entry waiting on two producers that tests 4-5 use
+    task dispatch_dep_entry();
+        begin
+            test5_dispatched_entry = rs_entry_idx;
+            dispatch_entry({{(RS_ENTRIES*NUM_FUS-2){1'b0}}, 2'b11}, 8'd15, 8'd25, 8'd35, 32'h2000, 32'h100);
+        end
+    endtask
+
+    // Dispatch dependency-free entries until the RS is full
+    task fill_rs();
+        integer i;
+        logic [$clog2(NUM_PREGS)-1:0] dst_val, src1_val, src2_val;
+        logic [31:0] pc_val;
+        begin
+            for (i = 0; i < RS_ENTRIES; i = i + 1) begin
+                if (!rs_full) begin
+                    dst_val  = i;
+                    src1_val = i + 1;
+                    src2_val = i + 2;
+                    pc_val   = 32'h4000 + (i * 32'h10);
+                    dispatch_entry('0, dst_val, src1_val, src2_val, pc_val, 32'h0);
+                end else begin
+                    $display("  RS Full at entry %0d", i);
+                    break;
+                end
+            end
+        end
+    endtask
+
     // Test 1: Dispatch with no dependencies
     task test_dispatch_no_deps();
         begin
             $display("\n[Test 1] Dispatch entry with no dependencies");
-            dispatch_entry('0, 8'd10, 8'd20, 8'd30, 32'h1000, 32'h0);
-            @(posedge clk);
+            dispatch_no_deps_entry();
             $display("Current Clock Cycle: %0d", cycle_count);
             check_assertion("Entry should be valid after dispatch",      dut.wakeup.entry_valid[0] == 1'b1);
             check_assertion("Should have request after dispatch with no deps", dut.reqs_in[0] == 1'b1);
@@ -150,6 +201,7 @@ module tb_scheduler;
         logic [$clog2(RS_ENTRIES)-1:0] granted_entry;
         begin
             $display("\n[Test 2] Select should grant ready entry");
+            dispatch_no_deps_entry();
             $display("Current Clock Cycle: %0d", cycle_count);
             check_assertion("Grant should be valid",                          dut.grant_valid == 1'b1);
             check_assertion("Granted entry should not request anymore",       dut.reqs_out[granted_entry] == 1'b0);
@@ -162,6 +214,8 @@ module tb_scheduler;
     task test_reg_read_payload();
         begin
             $display("\n[Test 3] Register read receives correct payload");
+            dispatch_no_deps_entry();
+            @(posedge clk);     // entry fires to reg read (test 2)
             $display("Current Clock Cycle: %0d", cycle_count);
             check_assertion("Payload dst_preg should match",  rr_pkt.dst_preg  == 8'd10);
             check_assertion("Payload src1_preg should match", rr_pkt.src1_preg == 8'd20);
@@ -170,15 +224,12 @@ module tb_scheduler;
         end
     endtask
 
-    logic [$clog2(RS_ENTRIES)-1:0] test5_dispatched_entry;
-
     // Test 4: Dispatch with dependencies
     task test_dispatch_with_deps();
         begin
             $display("\n[Test 4] Dispatch entry with dependencies");
             $display("Current Clock Cycle: %0d", cycle_count);
-            test5_dispatched_entry = rs_entry_idx;
-            dispatch_entry({{(RS_ENTRIES*NUM_FUS-2){1'b0}}, 2'b11}, 8'd15, 8'd25, 8'd35, 32'h2000, 32'h100);
+            dispatch_dep_entry();
             $display("  Reqs (should be blocked by deps): %b", dut.reqs_in);
             check_assertion("Entry with dependencies should not request", dut.reqs_in[test5_dispatched_entry] == 1'b0);
             check_assertion("Entry should be valid",                      dut.wakeup.entry_valid[test5_dispatched_entry] == 1'b1);
@@ -190,6 +241,7 @@ module tb_scheduler;
     task test_clear_dependencies();
         begin
             $display("\n[Test 5] Clear one dependency with global ready mask");
+            dispatch_dep_entry();
             set_global_ready({{(RS_ENTRIES*NUM_FUS-1){1'b0}}, 1'b1});
             check_assertion("Dependencies should be half cleared", dut.wakeup.dependency_matrix_row[test5_dispatched_entry] != {{(RS_ENTRIES*NUM_FUS-2){1'b0}}, 2'b11});
             $display("Dependency Mask: %0b", dut.wakeup.dependency_matrix_row[test5_dispatched_entry]);
@@ -205,24 +257,9 @@ module tb_scheduler;
     task test_fill_rs();
         integer valid_count;
         integer i;
-        logic [$clog2(NUM_PREGS)-1:0] dst_val, src1_val, src2_val;
-        logic [31:0] pc_val;
         begin
             $display("\n[Test 7] Fill reservation station to capacity");
-            reset_dut();
-            
-            for (i = 0; i < RS_ENTRIES; i = i + 1) begin
-                if (!rs_full) begin
-                    dst_val  = i;
-                    src1_val = i + 1;
-                    src2_val = i + 2;
-                    pc_val   = 32'h4000 + (i * 32'h10);
-                    dispatch_entry('0, dst_val, src1_val, src2_val, pc_val, 32'h0);
-                end else begin
-                    $display("  RS Full at entry %0d", i);
-                    break;
-                end
-            end
+            fill_rs();
             
             valid_count = 0;
             for (i = 0; i < RS_ENTRIES; i = i + 1) begin
@@ -240,6 +277,7 @@ module tb_scheduler;
         integer i;
         begin
             $display("\n[Test 8] Attempt dispatch when RS is full");
+            fill_rs();
             
             valid_count_before = 0;
             for (i = 0; i < RS_ENTRIES; i = i + 1) begin
@@ -269,7 +307,6 @@ module tb_scheduler;
     task test_payload_ram_integrity();
         begin
             $display("\n[Test 9] Verify payload RAM integrity");
-            reset_dut();
             
             dispatch_entry('0, 8'd6,  8'd7,  8'd8,  32'hA000, 32'h11);
             dispatch_entry('0, 8'd16, 8'd17, 8'd18, 32'hB000, 32'h22);
@@ -288,16 +325,15 @@ module tb_scheduler;
         init_signals();
         
         $display("=== Scheduler Testbench ===");
-        reset_dut();
         
-        test_dispatch_no_deps();
-        test_select_grant();
-        test_reg_read_payload();
-        test_dispatch_with_deps();
-        test_clear_dependencies();
-        test_fill_rs();
-        test_dispatch_when_full();
-        test_payload_ram_integrity();
+        `RUN_TEST(test_dispatch_no_deps)
+        `RUN_TEST(test_select_grant)
+        `RUN_TEST(test_reg_read_payload)
+        `RUN_TEST(test_dispatch_with_deps)
+        `RUN_TEST(test_clear_dependencies)
+        `RUN_TEST(test_fill_rs)
+        `RUN_TEST(test_dispatch_when_full)
+        `RUN_TEST(test_payload_ram_integrity)
         repeat(5) @(negedge clk);
         
         $display("\n=== Testbench Complete ===");

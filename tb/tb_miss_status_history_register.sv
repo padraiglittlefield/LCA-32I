@@ -2,6 +2,7 @@
 
 import CORE_PKG::*;
 module tb_miss_status_history_register;
+    `include "tb_test_select.svh"
     // ===== Testbench Setup ===== //
 
 
@@ -30,7 +31,7 @@ module tb_miss_status_history_register;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_miss_status_history_register.fst");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_miss_status_history_register);
     end
 
@@ -77,15 +78,7 @@ module tb_miss_status_history_register;
         begin
             clk = 0;
             rst = 0;
-            flush = 0;
-            ld_alloc_en_i = 0;
-            ld_alloc_addr_i = 0;
-            ld_alloc_rob_idx_i = 0;
-            st_alloc_en_i = 0;
-            st_alloc_addr_i = 0;
-            st_alloc_data_i = 0;
-            repair_complete_i = 0;
-            repair_ack_i = 0;
+            init_signals_inputs();
         end
     endtask
 
@@ -107,6 +100,7 @@ module tb_miss_status_history_register;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            init_signals_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -573,6 +567,7 @@ module tb_miss_status_history_register;
 
     task init_signals_inputs();
         begin
+            flush = 0;
             ld_alloc_en_i = 0;
             ld_alloc_addr_i = 0;
             ld_alloc_rob_idx_i = 0;
@@ -588,25 +583,23 @@ module tb_miss_status_history_register;
     initial begin
         init_signals();
         $display("=== MSHR Testbench ===");
-        reset_dut();
 
-        test_reset_state();
-        test_single_load();
-        test_single_store();
-        test_load_priority_over_store();
-        test_load_order();
-        test_load_fill();
-        test_store_fill();
-        test_simultaneous_alloc();
-        test_alloc_during_repair();
-        test_complete_and_alloc_same_cycle();
-        test_spurious_ack_complete();
-        test_flush_clears_loads_keeps_stores();
-        test_flush_blocks_alloc();
-        test_flush_during_store_repair();
-        test_reset_mid_repair();
-        reset_dut();
-        test_flush_during_load_repair();
+        `RUN_TEST(test_reset_state)
+        `RUN_TEST(test_single_load)
+        `RUN_TEST(test_single_store)
+        `RUN_TEST(test_load_priority_over_store)
+        `RUN_TEST(test_load_order)
+        `RUN_TEST(test_load_fill)
+        `RUN_TEST(test_store_fill)
+        `RUN_TEST(test_simultaneous_alloc)
+        `RUN_TEST(test_alloc_during_repair)
+        `RUN_TEST(test_complete_and_alloc_same_cycle)
+        `RUN_TEST(test_spurious_ack_complete)
+        `RUN_TEST(test_flush_clears_loads_keeps_stores)
+        `RUN_TEST(test_flush_blocks_alloc)
+        `RUN_TEST(test_flush_during_store_repair)
+        `RUN_TEST(test_reset_mid_repair)
+        `RUN_TEST(test_flush_during_load_repair)
 
         repeat(5) @(posedge clk);
 

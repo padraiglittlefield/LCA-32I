@@ -5,6 +5,7 @@ import CORE_PKG::*;
     Assertion Testbench for Dispatch
 */
 module tb_dispatch;
+    `include "tb_test_select.svh"
     localparam CLK_PERIOD = 20;
     localparam DUTY_CYCLE = 0.5;
 
@@ -113,7 +114,7 @@ module tb_dispatch;
 
     // Waveform dump
     initial begin
-        $dumpfile("tb_dispatch.vcd");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0, tb_dispatch);
     end
 
@@ -563,27 +564,26 @@ module tb_dispatch;
         init_signals();
 
         $display("=== Dispatch Testbench ===");
-        reset_dut();
 
-        test_reset_state();                 reset_dut();
-        test_single_alu();                  reset_dut();
-        test_dual_alu();                    reset_dut();
-        test_agu_steering();                reset_dut();
-        test_store_flags();                 reset_dut();
-        test_alu_not_to_lsu();              reset_dut();
-        test_rs_full_steering();            reset_dut();
-        test_third_alu_pipe();              reset_dut();
-        test_all_alu_full_blocks();         reset_dut();
-        test_rob_full_blocks();             reset_dut();
-        test_in_order_fire();               reset_dut();
-        test_dependency_mask();             reset_dut();
-        test_same_cycle_raw();              reset_dut();
-        test_queue_full();                  reset_dut();
-        test_one_slot_left();               reset_dut();
-        test_no_stale_refire();             reset_dut();
-        test_flush();                       reset_dut();
-        test_flush_clears_dependencies();   reset_dut();
-        test_stall();
+        `RUN_TEST(test_reset_state)
+        `RUN_TEST(test_single_alu)
+        `RUN_TEST(test_dual_alu)
+        `RUN_TEST(test_agu_steering)
+        `RUN_TEST(test_store_flags)
+        `RUN_TEST(test_alu_not_to_lsu)
+        `RUN_TEST(test_rs_full_steering)
+        `RUN_TEST(test_third_alu_pipe)
+        `RUN_TEST(test_all_alu_full_blocks)
+        `RUN_TEST(test_rob_full_blocks)
+        `RUN_TEST(test_in_order_fire)
+        `RUN_TEST(test_dependency_mask)
+        `RUN_TEST(test_same_cycle_raw)
+        `RUN_TEST(test_queue_full)
+        `RUN_TEST(test_one_slot_left)
+        `RUN_TEST(test_no_stale_refire)
+        `RUN_TEST(test_flush)
+        `RUN_TEST(test_flush_clears_dependencies)
+        `RUN_TEST(test_stall)
 
         repeat(5) @(negedge clk);
 

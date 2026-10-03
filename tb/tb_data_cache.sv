@@ -2,6 +2,7 @@
 
 import CORE_PKG::*;
 module tb_data_cache;
+    `include "tb_test_select.svh"
     // ===== Testbench Setup ===== //
 
 
@@ -26,7 +27,7 @@ module tb_data_cache;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_data_cache.fst");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_data_cache);
     end
 
@@ -64,6 +65,13 @@ module tb_data_cache;
         begin
             clk = 0;
             rst = 0;
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             wr_en = 0;
             is_repair_i = 0;
             is_repair_dirty_i = 0;
@@ -92,6 +100,7 @@ module tb_data_cache;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -534,25 +543,24 @@ module tb_data_cache;
     initial begin
         init_signals();
         $display("=== Data Cache Testbench ===");
-        reset_dut();
 
-        test_reset_state();
-        test_rd_en_gating();
-        test_repair_clean_fill();
-        test_repair_dirty_fill();
-        test_offsets_map_to_same_line();
-        test_read_returns_stored_tag();
-        test_store_write_marks_dirty();
-        test_store_write_keeps_tag();
-        test_store_no_writeback();
-        test_evict_dirty_writeback();
-        test_evict_dirty_repair_writeback();
-        test_evict_clean_no_writeback();
-        test_evict_invalid_no_writeback();
-        test_read_during_write();
-        test_back_to_back_repairs();
-        test_all_entries_independent();
-        test_reset_clears_populated();
+        `RUN_TEST(test_reset_state)
+        `RUN_TEST(test_rd_en_gating)
+        `RUN_TEST(test_repair_clean_fill)
+        `RUN_TEST(test_repair_dirty_fill)
+        `RUN_TEST(test_offsets_map_to_same_line)
+        `RUN_TEST(test_read_returns_stored_tag)
+        `RUN_TEST(test_store_write_marks_dirty)
+        `RUN_TEST(test_store_write_keeps_tag)
+        `RUN_TEST(test_store_no_writeback)
+        `RUN_TEST(test_evict_dirty_writeback)
+        `RUN_TEST(test_evict_dirty_repair_writeback)
+        `RUN_TEST(test_evict_clean_no_writeback)
+        `RUN_TEST(test_evict_invalid_no_writeback)
+        `RUN_TEST(test_read_during_write)
+        `RUN_TEST(test_back_to_back_repairs)
+        `RUN_TEST(test_all_entries_independent)
+        `RUN_TEST(test_reset_clears_populated)
 
         repeat(5) @(posedge clk);
 

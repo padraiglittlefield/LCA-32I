@@ -3,6 +3,7 @@
 import CORE_PKG::*;
 
 module tb_execute_alu;
+    `include "tb_test_select.svh"
     
     // ===== Testbench Setup ===== //
     
@@ -28,7 +29,7 @@ module tb_execute_alu;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_execute_alu.vcd");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_execute_alu);
     end
 
@@ -74,6 +75,13 @@ module tb_execute_alu;
         begin
             clk = 0; 
             rst = 0;
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             rr_fire_valid = 1'b0;
             rr_pkt = '0;
         end
@@ -97,6 +105,7 @@ module tb_execute_alu;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -289,19 +298,18 @@ module tb_execute_alu;
     initial begin
         init_signals();
         $display("=== Execute (ALU) Testbench ===");
-        reset_dut();
 
         // Tests
-        test_alu_r();
-        test_alu_i();
-        test_alu_not_en();
-        test_reg_file();
-        test_rob();
-        test_fwrd_unit();
-        test_branch_correct_prediction_t();
-        test_branch_incorrect_prediction_t();
-        test_branch_correct_prediction_nt();
-        test_branch_incorrect_prediction_nt();
+        `RUN_TEST(test_alu_r)
+        `RUN_TEST(test_alu_i)
+        `RUN_TEST(test_alu_not_en)
+        `RUN_TEST(test_reg_file)
+        `RUN_TEST(test_rob)
+        `RUN_TEST(test_fwrd_unit)
+        `RUN_TEST(test_branch_correct_prediction_t)
+        `RUN_TEST(test_branch_incorrect_prediction_t)
+        `RUN_TEST(test_branch_correct_prediction_nt)
+        `RUN_TEST(test_branch_incorrect_prediction_nt)
 
 
         repeat(5) @(posedge clk);

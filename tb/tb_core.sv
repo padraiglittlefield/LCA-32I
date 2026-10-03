@@ -3,6 +3,7 @@
 import CORE_PKG::*;
 
 module tb_core;
+    `include "tb_test_select.svh"
 
     // ===== Testbench Setup ===== //
 
@@ -26,7 +27,7 @@ module tb_core;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_core.fst");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0, tb_core);
     end
 
@@ -41,6 +42,13 @@ module tb_core;
         begin
             clk = 0;
             rst = 0;
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             // Default all scheduler dispatch inputs to safe values
             for (int i = 0; i < NUM_FUS; i++) begin
                 dut.disp_valid[i]      = 1'b0;
@@ -68,6 +76,7 @@ module tb_core;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -143,9 +152,8 @@ module tb_core;
     initial begin
         init_signals();
         $display("=== Core Top Testbench ===");
-        reset_dut();
 
-        test_dispatch();
+        `RUN_TEST(test_dispatch)
         repeat(10) @(posedge clk);
 
         $display("\n=== Testbench Complete ===");

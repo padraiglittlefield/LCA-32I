@@ -17,15 +17,21 @@ RTL_F     := $(ROOT)/filelists/rtl.f
 BUILD_DIR := $(ROOT)/build/sim
 MDIR      := $(BUILD_DIR)/tb_$(target)
 
+# Optional: run a single test within the testbench, e.g.
+#   make build target=data_cache test=reset_state
+# Passed to the sim as +TEST=<name>; the "test_" prefix is optional.
+SIM_ARGS  := $(if $(test),+TEST=$(test))
+
 # Tools
 VERILATOR := verilator
 VERILATOR_BASE_FLAGS := --binary --timing -Wall -Wno-fatal
-VERILATOR_BASE_FLAGS += -I$(ROOT)/rtl/core
+VERILATOR_BASE_FLAGS += -I$(ROOT)/rtl/core -I$(TB_DIR)
 VERILATOR_BASE_FLAGS += --top-module tb_$(target) --Mdir $(MDIR)
 
 # Trace format specific flags
-VERILATOR_FST_FLAGS := $(VERILATOR_BASE_FLAGS) --trace-fst --trace-structs
-VERILATOR_VCD_FLAGS := $(VERILATOR_BASE_FLAGS) --trace
+# The testbench's $$dumpfile name comes from DUMPFILE so it always matches the format
+VERILATOR_FST_FLAGS := $(VERILATOR_BASE_FLAGS) --trace-fst --trace-structs -DDUMPFILE=\"tb_$(target).fst\"
+VERILATOR_VCD_FLAGS := $(VERILATOR_BASE_FLAGS) --trace -DDUMPFILE=\"tb_$(target).vcd\"
 
 # RTL sources from the filelist (comments and blank lines stripped)
 RTL_SOURCES := $(addprefix $(ROOT)/,$(shell grep -v '^\s*\#' $(RTL_F) | grep -v '^\s*$$'))
@@ -48,6 +54,9 @@ all:
 	@echo "  make view target=dispatch       - Build, run, and view"
 	@echo "  make build target=dispatch      - Build and run only"
 	@echo "  make view target=dispatch TRACE_FORMAT=fst  - Override the format"
+	@echo ""
+	@echo "Add test=<TEST> to any of these to run just one test in the testbench:"
+	@echo "  make build target=data_cache test=reset_state"
 
 # Check if target is specified
 check_target:
@@ -55,6 +64,9 @@ ifndef target
 	$(error target is not set. Usage: make view target=<MODULE_NAME>)
 endif
 	@echo "Building testbench for module: $(target)"
+ifdef test
+	@echo "Running only test: $(test)"
+endif
 
 # === FST-specific targets ===
 build_fst: TRACE_FORMAT = fst
@@ -78,7 +90,7 @@ compile_fst:
 run_fst:
 	@echo "=== Running simulation (FST format) ==="
 	@if [ -f "$(MDIR)/Vtb_$(target)" ]; then \
-		cd $(MDIR) && ./Vtb_$(target); \
+		cd $(MDIR) && ./Vtb_$(target) $(SIM_ARGS); \
 	else \
 		echo "Error: Compiled binary not found!"; \
 		exit 1; \
@@ -114,7 +126,7 @@ compile_vcd:
 run_vcd:
 	@echo "=== Running simulation (VCD format) ==="
 	@if [ -f "$(MDIR)/Vtb_$(target)" ]; then \
-		cd $(MDIR) && ./Vtb_$(target); \
+		cd $(MDIR) && ./Vtb_$(target) $(SIM_ARGS); \
 	else \
 		echo "Error: Compiled binary not found!"; \
 		exit 1; \
@@ -177,6 +189,7 @@ help:
 	@echo "Other targets:"
 	@echo "  make compile-only target=<MODULE> - Only compile"
 	@echo "  make run-only target=<MODULE>     - Only run (if already compiled)"
+	@echo "  make <any> target=<MODULE> test=<TEST> - Run only one test (test_ prefix optional)"
 	@echo "  make regress                      - Run all testbenches, report pass rate"
 	@echo "  make regress tests=\"a b\"         - Run only the listed testbenches"
 	@echo "  make filelist                     - Regenerate verible.filelist"
@@ -188,3 +201,5 @@ help:
 	@echo "  make view_fst target=dispatch"
 	@echo "  make view_vcd target=scheduler"
 	@echo "  make build_fst target=core"
+	@echo "  make build target=data_cache test=evict_dirty_writeback"
+	@echo "  make run-only target=data_cache test=reset_state  - Rerun one test, no recompile"

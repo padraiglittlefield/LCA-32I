@@ -4,6 +4,7 @@ import CORE_PKG::*;
 
     
 module tb_store_data_queue;
+    `include "tb_test_select.svh"
     // ===== Testbench Setup ===== //
     
     
@@ -29,7 +30,7 @@ module tb_store_data_queue;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_store_data_queue.fst");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_store_data_queue);
         // $dumpvars(0, tb_store_data_queue.dut.ldq);  
     end
@@ -89,6 +90,13 @@ module tb_store_data_queue;
         begin
             clk = 0; 
             rst = 0;
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             disp_vld_i = 0;
             exec_store_data_i = 0;
             exec_vld_i = 0;
@@ -123,6 +131,7 @@ module tb_store_data_queue;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -209,6 +218,7 @@ module tb_store_data_queue;
 
     task test_exec();
         begin
+            dispatch_entry();
             update_addr(1, dut.head_ptr, 5108, 21);
             check_assertion("First entry should have valid addr", dut.sdq[0].addr_valid == 1);
             check_assertion("First entry should have correct addr", dut.sdq[0].addr == 5108);
@@ -218,6 +228,8 @@ module tb_store_data_queue;
 
     task test_issue();
         begin
+            dispatch_entry();
+            update_addr(1, dut.head_ptr, 5108, 21);
             commit_store(dut.head_ptr);
             check_assertion("First entry should be committed", dut.sdq[0].committed == 1);
             check_assertion("First entry should be issued", dut.issue_vld_o == 1);
@@ -237,6 +249,9 @@ module tb_store_data_queue;
 
      task test_empty();
         begin
+            for(int i = 0; i < 16; i++) begin
+                dispatch_entry();
+            end
             for(int i = 0; i < 16; i++) begin
                 update_addr(1, i, i*3, i);
             end
@@ -272,22 +287,18 @@ module tb_store_data_queue;
     initial begin
         init_signals();
         $display("=== SDQ Testbench ===");
-        reset_dut();
 
         // Tests
 
         // basic tests
-        test_alloc();
-        test_exec();
-        test_issue();
+        `RUN_TEST(test_alloc)
+        `RUN_TEST(test_exec)
+        `RUN_TEST(test_issue)
 
         // test filling and emptying
-        reset_dut();
-        test_fill();
-        test_empty();
-
-        reset_dut();
-        test_lookup();
+        `RUN_TEST(test_fill)
+        `RUN_TEST(test_empty)
+        `RUN_TEST(test_lookup)
         
         repeat(5) @(posedge clk);
 

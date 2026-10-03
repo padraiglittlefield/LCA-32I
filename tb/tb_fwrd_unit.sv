@@ -3,6 +3,7 @@
 import CORE_PKG::*;
 
 module tb_fwrd_unit;
+    `include "tb_test_select.svh"
     
     // ===== Testbench Setup ===== //
     
@@ -28,7 +29,7 @@ module tb_fwrd_unit;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_phys_reg_file.vcd");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_phy_reg_file);
     end
 
@@ -61,6 +62,14 @@ module tb_fwrd_unit;
 
     task init_signals();
         begin
+
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             for (int i = 0; i < NUM_FUS; i++) begin
                 ex_valid[i]    = 1'b0;
                 ex_dst_preg[i] = '0;
@@ -87,6 +96,7 @@ module tb_fwrd_unit;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -227,14 +237,13 @@ module tb_fwrd_unit;
     initial begin
         init_signals();
         $display("=== Forwarding Unit Testbench ===");
-        reset_dut();
 
         // Tests
-        test_fwrd_miss();
-        test_src1_hit();
-        test_src2_hit();
-        test_both_hit_different_fus();
-        test_both_hit_same_fus();
+        `RUN_TEST(test_fwrd_miss)
+        `RUN_TEST(test_src1_hit)
+        `RUN_TEST(test_src2_hit)
+        `RUN_TEST(test_both_hit_different_fus)
+        `RUN_TEST(test_both_hit_same_fus)
 
         $display("\n=== Testbench Complete ===");
         $display("Total Tests: %0d", pass_count + fail_count);

@@ -3,6 +3,7 @@
 import CORE_PKG::*;
 
 module tb_register_read;
+    `include "tb_test_select.svh"
     
     // ===== Testbench Setup ===== //
     
@@ -28,7 +29,7 @@ module tb_register_read;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_register_read.vcd");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_register_read);
     end
 
@@ -76,6 +77,13 @@ module tb_register_read;
         begin
             clk = 0; 
             rst = 0;
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             // Scheduler inputs
             sched_fire_valid = 0;
             sched_pkt = '0;
@@ -87,7 +95,6 @@ module tb_register_read;
             fwrd_src2_hit = 0;
             fwrd_src1_val = 32'h0;
             fwrd_src2_val = 32'h0;
-  
         end
     endtask
 
@@ -109,6 +116,7 @@ module tb_register_read;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -310,18 +318,17 @@ module tb_register_read;
     initial begin
         init_signals();
         $display("=== Register Read Testbench ===");
-        reset_dut();
 
         // Tests
-        test_reset_state();
-        test_basic_reg_file_read();
-        test_forward_src1_only();
-        test_forward_src2_only();
-        test_forward_both_sources();
-        test_fire_valid_propagation();
-        test_multiple_instructions();
-        test_passthrough_signals();
-        test_register_zero();
+        `RUN_TEST(test_reset_state)
+        `RUN_TEST(test_basic_reg_file_read)
+        `RUN_TEST(test_forward_src1_only)
+        `RUN_TEST(test_forward_src2_only)
+        `RUN_TEST(test_forward_both_sources)
+        `RUN_TEST(test_fire_valid_propagation)
+        `RUN_TEST(test_multiple_instructions)
+        `RUN_TEST(test_passthrough_signals)
+        `RUN_TEST(test_register_zero)
 
         $display("\n=== Testbench Complete ===");
         $display("Total Tests: %0d", pass_count + fail_count);

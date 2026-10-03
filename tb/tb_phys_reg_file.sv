@@ -3,6 +3,7 @@
 import CORE_PKG::*;
 
 module tb_phys_reg_file;
+    `include "tb_test_select.svh"
     
     // ===== Testbench Setup ===== //
     
@@ -28,7 +29,7 @@ module tb_phys_reg_file;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_phys_reg_file.vcd");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_phys_reg_file);
     end
 
@@ -69,6 +70,13 @@ module tb_phys_reg_file;
         begin
             clk = 0; 
             rst = 0;
+            clear_inputs();
+        end
+    endtask
+
+    // Drive every DUT input to its idle value (called on each reset)
+    task clear_inputs();
+        begin
             for (int i = 0; i < NUM_FUS; i++) begin
                 rd_src1_preg[i] = '0;
                 rd_src2_preg[i] = '0;
@@ -104,6 +112,7 @@ module tb_phys_reg_file;
         begin
             $display("\n[RESET] Resetting DUT");
             @(negedge clk);
+            clear_inputs();
             rst = 1;
             @(negedge clk);
             @(negedge clk);
@@ -144,6 +153,8 @@ module tb_phys_reg_file;
         begin
             $display("\n[Test 2] Verify Register Reads");
 
+            write_reg(32'd12, 7);
+            write_reg(32'd13, 8);
             rd_src1_preg[0] = 7;
             rd_src2_preg[0] = 8;
             @(negedge clk);
@@ -156,11 +167,10 @@ module tb_phys_reg_file;
     initial begin
         init_signals();
         $display("=== Physical Register File Testbench ===");
-        reset_dut();
 
         // Tests
-        test_reg_write();
-        test_read_reg();
+        `RUN_TEST(test_reg_write)
+        `RUN_TEST(test_read_reg)
 
         $display("\n=== Testbench Complete ===");
         $display("Total Tests: %0d", pass_count + fail_count);

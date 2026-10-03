@@ -4,6 +4,7 @@ import CORE_PKG::*;
 
 
 module tb_load_data_queue;
+    `include "tb_test_select.svh"
     // ===== Testbench Setup ===== //
 
 
@@ -29,7 +30,7 @@ module tb_load_data_queue;
     integer fail_count = 0;
 
     initial begin
-        $dumpfile("tb_load_data_queue.fst");
+        $dumpfile(`DUMPFILE);
         $dumpvars(0,tb_load_data_queue);
     end
 
@@ -428,20 +429,19 @@ module tb_load_data_queue;
     initial begin
         init_signals();
         $display("=== LDQ Testbench ===");
-        reset_dut();
 
-        test_reset_state();                 reset_dut();
-        test_alloc_indices();               reset_dut();
-        test_no_issue_without_address();    reset_dut();
-        test_issue_after_address();         reset_dut();
-        test_issue_en_gating();             reset_dut();
-        test_ack_clears_entry();            reset_dut();
-        test_issue_priority();              reset_dut();
-        test_fill_and_full();               reset_dut();
-        test_full_then_free_one();          reset_dut();
-        test_alloc_and_exec_same_cycle();   reset_dut();
-        test_flush();                       reset_dut();
-        test_flush_blocks_alloc();
+        `RUN_TEST(test_reset_state)
+        `RUN_TEST(test_alloc_indices)
+        `RUN_TEST(test_no_issue_without_address)
+        `RUN_TEST(test_issue_after_address)
+        `RUN_TEST(test_issue_en_gating)
+        `RUN_TEST(test_ack_clears_entry)
+        `RUN_TEST(test_issue_priority)
+        `RUN_TEST(test_fill_and_full)
+        `RUN_TEST(test_full_then_free_one)
+        `RUN_TEST(test_alloc_and_exec_same_cycle)
+        `RUN_TEST(test_flush)
+        `RUN_TEST(test_flush_blocks_alloc)
 
         repeat(5) @(posedge clk);
 

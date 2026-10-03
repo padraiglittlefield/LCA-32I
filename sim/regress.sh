@@ -49,8 +49,8 @@ for t in "${TARGETS[@]}"; do
         SUMMARY+=("$(printf '%-36s %s' "$tb" "${RED}MISSING${RST}")"); tb_bad=$((tb_bad + 1)); continue
     fi
 
-    if ! verilator --binary --timing -Wall -Wno-fatal --trace-fst --trace-structs \
-            -I"$ROOT/rtl/core" --top-module "$tb" --Mdir "$mdir" -j 0 \
+    if ! verilator --binary --timing -Wall -Wno-fatal --trace-fst --trace-structs -DDUMPFILE="\"$tb.fst\"" \
+            -I"$ROOT/rtl/core" -I"$SIM_DIR" --top-module "$tb" --Mdir "$mdir" -j 0 \
             "${SOURCES[@]}" "$SIM_DIR/$tb.sv" \
             > "$log" 2>&1; then
         echo "${RED}COMPILE ERROR${RST}  (see $log)"
