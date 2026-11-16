@@ -31,7 +31,7 @@ module store_data_queue
     input   logic   [$clog2(SDQ_ENTRIES)-1:0]   ld_sdq_marker_i,    // "SDQ Marker" of load
     output  logic                               ld_hit_o,           // Load Hit
     output  logic   [31:0]                      ld_data_o,          // Data from hit
-    output  logic                               ld_ambig_stall_o,   // signals that there is an unresolved address in an older store and we need to stall  
+    output  logic                               ld_ambig_stall_o   // signals that there is an unresolved address in an older store and we need to stall  
 
     // input   logic                               clear_sdq_ent_vld_i,   // fuck why is this here??  
     // input   logic   [$clog2(SDQ_ENTRIES)-1:0]   clear_sdq_ent_idx_i

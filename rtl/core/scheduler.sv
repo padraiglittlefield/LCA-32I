@@ -27,7 +27,11 @@ module scheduler
     logic [$clog2(RS_ENTRIES)-1:0] retire_rs_entry;
     logic                          retire_rs_valid;
     logic [$clog2(NUM_FUS)-1:0]    rs_entry_idx;
-
+    logic [(RS_ENTRIES)-1:0] reqs_out;
+    logic [(RS_ENTRIES)-1:0] reqs_in;
+    disp_packet_t payload_ram [RS_ENTRIES];
+    disp_packet_t payload_ram_out;
+    
     assign rs_entry_idx = rs_entry_idx_o;
 
     wakeup wakeup (
@@ -45,8 +49,6 @@ module scheduler
         .retire_valid(retire_rs_valid)
     );
 
-    logic [(RS_ENTRIES)-1:0] reqs_out;
-    logic [(RS_ENTRIES)-1:0] reqs_in;
 
     always_ff @(posedge clk) begin
         reqs_in <= reqs_out;
@@ -71,8 +73,6 @@ module scheduler
     );
 
     /* ===== Payload RAM ===== */
-    disp_packet_t payload_ram [RS_ENTRIES];
-    disp_packet_t payload_ram_out;
 
     always_comb begin
         payload_ram_out = payload_ram[grant];
@@ -81,7 +81,7 @@ module scheduler
     always_ff @(posedge clk) begin
         if (rst) begin
             for (int i = 0; i < RS_ENTRIES; i++) begin
-                payload_ram[i] = '0;
+                payload_ram[i] <= '0;
             end
         end else begin
             if (disp_valid_i) begin

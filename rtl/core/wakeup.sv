@@ -37,13 +37,16 @@ logic [$clog2(RS_ENTRIES)-1:0] free_entry;
 logic full;
 logic [(RS_ENTRIES*NUM_FUS)-1:0] dependency_matrix_row [RS_ENTRIES]; //[x (this FU pipe)][y]
 
+logic granted;
+logic flag; // maybe not needed but scared of breaks for synth
+
 always_ff @( posedge clk ) begin 
     if (rst) begin
         for(int i = 0; i < RS_ENTRIES; i++) begin
             entry_valid[i] <= 1'b0;
             entry_granted[i] <= 1'b0;
             for(int j =0; j < RS_ENTRIES * NUM_FUS; j++) begin
-                dependency_matrix_row[i][j] = 0;
+                dependency_matrix_row[i][j] <= 0;
             end
         end 
     end else begin
@@ -72,7 +75,6 @@ end
 /*
     Setting Request Lines for Select
 */
-logic granted;
 always_comb begin
     for(int i = 0; i < RS_ENTRIES; i++) begin
         granted = entry_granted[i] || (grant_valid && grant == i);
@@ -85,7 +87,6 @@ end
     Free Entry Finder 
         - Simple Priority Encoder
 */
-logic flag; // maybe not needed but scared of breaks for synth
 always_comb begin
     free_entry = '0;
     full = 1'b1;

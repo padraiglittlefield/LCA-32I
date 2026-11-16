@@ -28,8 +28,9 @@ module rename
 
 
 // NOTE: Decode and Rename Width must be the same in the processor architecture
-logic free_list_empty [0:DECODE_WIDTH-1];;
-logic free_list_r_en [0:DECODE_WIDTH-1];
+
+logic [DECODE_WIDTH-1:0] free_list_empty;
+logic [DECODE_WIDTH-1:0] free_list_r_en;
 logic [$clog2(NUM_PREGS)-1:0] free_preg [0:DECODE_WIDTH-1];
 
 always_comb begin
@@ -49,7 +50,7 @@ free_list u_free_list (
     .empty(free_list_empty)
 );
 
-logic alias_w_en [0:RENAME_WIDTH-1];
+logic [RENAME_WIDTH-1:0] alias_w_en;
 logic [$clog2(NUM_AREGS)-1:0] dst_areg [0:RENAME_WIDTH-1];
 logic [$clog2(NUM_AREGS)-1:0] src1_areg [0:RENAME_WIDTH-1];
 logic [$clog2(NUM_PREGS)-1:0] src1_alias [0:RENAME_WIDTH-1];
@@ -57,7 +58,7 @@ logic [$clog2(NUM_AREGS)-1:0] src2_areg [0:RENAME_WIDTH-1];
 logic [$clog2(NUM_PREGS)-1:0] src2_alias [0:RENAME_WIDTH-1];
 
 
-assign alias_w_en = free_list_r_en & !free_list_empty; // if we read an entry it was so we could write it to the RAT so
+assign alias_w_en = free_list_r_en & ~(&free_list_empty); // if we read an entry it was so we could write it to the RAT so
 
 always_comb begin
     for(int i=0; i<RENAME_WIDTH;i++) begin

@@ -36,11 +36,32 @@ module dispatch
 
 );
 
+    /*
     logic [$clog2(FIRE_WIDTH)-1:0] dispatch_stall; //TODO: Properly track Dispatch Stalling 
     logic instr_vld[FIRE_WIDTH];
     rename_packet_t instr_pkt[FIRE_WIDTH];
     disp_packet_t new_disp_pkt [0:FIRE_WIDTH-1];
 
+    fu_type_e required_fu [0:FIRE_WIDTH-1];
+    logic [NUM_FUS-1:0] pipe_free;  // marked by rs_full, makes sure that the pipe can actually accept new entries
+    logic [$clog2(NUM_FUS)-1:0] assigned_pipe [0:FIRE_WIDTH-1];
+    logic assignment_vld [0:FIRE_WIDTH-1];
+    logic [NUM_FUS-1:0] pipe_claimed [0:FIRE_WIDTH-1];
+    
+    logic fire_vld [0:FIRE_WIDTH-1];
+    logic [$clog2(NUM_PREGS)-1:0] dm_dst_preg [0:FIRE_WIDTH-1];
+    logic [$clog2((RS_ENTRIES * NUM_FUS))-1:0] dm_fire_loc [0:FIRE_WIDTH-1];
+    logic [$clog2(NUM_PREGS)-1:0] dm_src1_preg [0:FIRE_WIDTH-1];
+    logic [$clog2(NUM_PREGS)-1:0] dm_src2_preg [0:FIRE_WIDTH-1];
+    logic dm_src1_vld [0:FIRE_WIDTH-1];
+    logic dm_src2_vld [0:FIRE_WIDTH-1];
+    logic [(RS_ENTRIES * NUM_FUS)-1:0] dm_dependency_mask [0:FIRE_WIDTH-1];
+
+    logic dm_exec_vld [0:NUM_FUS-1];
+    logic [$clog2(NUM_PREGS)-1:0] dm_exec_dst_preg [0:NUM_FUS-1];
+    
+    
+    
     instruction_queue u_instr_queue (
         .clk_i(clk_i),
         .rst_i(rst_i),
@@ -53,18 +74,11 @@ module dispatch
         .instr_pkt_o(instr_pkt)
     );
 
-    /* === Dispatch Steering Logic ===  
-        - Tries to find an backend pipe to send each instruction to based on what it needs.
+    // === Dispatch Steering Logic ===  
+    //    - Tries to find an backend pipe to send each instruction to based on what it needs.
     
-    */ 
+     
 
-    fu_type_e required_fu [0:FIRE_WIDTH-1];
-    logic [NUM_FUS-1:0] pipe_free;  // marked by rs_full, makes sure that the pipe can actually accept new entries
-    logic [$clog2(NUM_FUS)-1:0] assigned_pipe [0:FIRE_WIDTH-1];
-    logic assignment_vld [0:FIRE_WIDTH-1];
-    logic [NUM_FUS-1:0] pipe_claimed [0:FIRE_WIDTH-1];
-
-    
     always_comb begin : pipe_steering
         pipe_claimed[0] = '0;
         for (int i = 0; i < FIRE_WIDTH; i++) begin        
@@ -86,18 +100,6 @@ module dispatch
     end
 
 
-    logic fire_vld [0:FIRE_WIDTH-1];
-    logic [$clog2(NUM_PREGS)-1:0] dm_dst_preg [0:FIRE_WIDTH-1];
-    logic [$clog2((RS_ENTRIES * NUM_FUS))-1:0] dm_fire_loc [0:FIRE_WIDTH-1];
-    logic [$clog2(NUM_PREGS)-1:0] dm_src1_preg [0:FIRE_WIDTH-1];
-    logic [$clog2(NUM_PREGS)-1:0] dm_src2_preg [0:FIRE_WIDTH-1];
-    logic dm_src1_vld [0:FIRE_WIDTH-1];
-    logic dm_src2_vld [0:FIRE_WIDTH-1];
-
-    logic [(RS_ENTRIES * NUM_FUS)-1:0] dm_dependency_mask [0:FIRE_WIDTH-1];
-
-    logic dm_exec_vld [0:NUM_FUS-1];
-    logic [$clog2(NUM_PREGS)-1:0] dm_exec_dst_preg [0:NUM_FUS-1];
 
     always_comb begin : dmt_update
         for(int i = 0; i < FIRE_WIDTH; i++) begin
@@ -202,6 +204,6 @@ module dispatch
     
     
     
-
+*/
 
 endmodule
